@@ -1,0 +1,347 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.db/general/generated"
+}
+
+generator dbml {
+  provider = "prisma-dbml-generator"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("GENERAL_DATABASE_URL")
+}
+
+model TradingService {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(120)
+
+  pairs Pair[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([name])
+  @@map("trading_services")
+}
+
+model StrategySettings {
+  id   Int  @id @default(autoincrement())
+  data Json @default("{}")
+  tf   Int  @default(60)
+
+  strategyId Int      @map("strategy_id")
+  strategy   Strategy @relation(fields: [strategyId], references: [id], onDelete: Restrict)
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([strategyId, tf, pairId])
+  @@map("strategy_settings")
+}
+
+model Pair {
+  id                 Int     @id @default(autoincrement())
+  name               String  @db.VarChar(50)
+  symbol             String  @db.VarChar(50)
+  precision          Int     @default(2)
+  startTs            BigInt  @default(0) @map("start_ts")
+  currentTs          BigInt  @default(0) @map("current_ts")
+  activated          Boolean @default(true)
+  isUsedToKline      Boolean @default(true) @map("is_used_to_kline")
+  isUsedToBidasks    Boolean @default(true) @map("is_used_to_bidasks")
+  tickerAnswerSymbol String? @map("ticker_answer_symbol")
+  clusterPrecision   Json    @default("{}") @map("cluster_precision")
+
+  orders              Order[]
+  positions           Position[]
+  trades              Trade[]
+  strategySessions    StrategySession[]
+  testStrategySession TestStrategySession[]
+
+  dhm2StrategySessions     Dhm2StrategySession[]
+  testDhm2StrategySessions TestDhm2StrategySession[]
+
+  historyStrategySessions HistoryStrategySession[]
+  tdaPoints               TdaPoint[]
+  settings                StrategySettings[]
+
+  tradingServiceId Int            @map("trading_service_id")
+  tradingService   TradingService @relation(fields: [tradingServiceId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([name, tradingServiceId])
+  @@unique([symbol, tradingServiceId])
+  @@map("pairs")
+}
+
+model TdaPoint {
+  id   String @id @unique @default(uuid())
+  side String @default("buy")
+  tf   Int    @default(60)
+  ts   BigInt
+  data Json   @default("{}")
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([pairId, tf, ts])
+  @@map("tda_points")
+}
+
+model Order {
+  id            String  @id @unique @default(uuid())
+  status        String?
+  orderType     String? @map("order_type")
+  stopOrderType String? @map("stop_order_type")
+  side          String  @default("buy")
+  data          Json    @default("{}")
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("orders")
+}
+
+model Position {
+  id            String  @id @unique @default(uuid())
+  status        String?
+  orderType     String? @map("order_type")
+  stopOrderType String? @map("stop_order_type")
+  side          String  @default("buy")
+  data          Json    @default("{}")
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("positions")
+}
+
+model Trade {
+  id   String @id @unique @default(uuid())
+  side String @default("buy")
+  data Json   @default("{}")
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("trades")
+}
+
+model Balance {
+  id     Int    @id @default(autoincrement())
+  symbol String @db.VarChar(50)
+  value  String @default("0") @db.VarChar(50)
+
+  trxs BalanceTrx[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([symbol])
+  @@map("balances")
+}
+
+model BalanceTrx {
+  id            Int    @id @default(autoincrement())
+  balanceBefore String @default("0") @map("balance_before") @db.VarChar(50)
+  balanceAfter  String @default("0") @map("balance_after") @db.VarChar(50)
+  status        String @default("pending")
+  side          String
+  type          String
+  quantity      String @db.VarChar(50)
+  price         String @db.VarChar(50)
+
+  balanceId Int     @map("balance_id")
+  balance   Balance @relation(fields: [balanceId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([balanceId])
+  @@map("balance_trxs")
+}
+
+model Strategy {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(100)
+
+  sessions     StrategySession[]
+  testSessions TestStrategySession[]
+
+  dhm2StrategySessions     Dhm2StrategySession[]
+  testDhm2StrategySessions TestDhm2StrategySession[]
+
+  settings StrategySettings[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([name])
+  @@map("strategies")
+}
+
+model StrategySession {
+  id          Int       @id @default(autoincrement())
+  status      String    @default("created")
+  trendStatus String    @default("created") @map("trend_status")
+  data        Json      @default("{}")
+  direction   String    @default("up")
+  notifiedAt  DateTime? @map("notified_at")
+  confirmed   Boolean   @default(false)
+  tf          Int       @default(60)
+  settings    Json      @default("{}")
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  strategyId Int      @map("strategy_id")
+  strategy   Strategy @relation(fields: [strategyId], references: [id], onDelete: Restrict)
+
+  trxs StrategySessionTrx[]
+
+  startTs   BigInt   @map("start_ts")
+  finishTs  BigInt?  @map("finish_ts")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([pairId])
+  @@index([strategyId, pairId])
+  @@index([strategyId, pairId, status])
+  @@map("strategy_sessions")
+}
+
+model Dhm2StrategySession {
+  id          Int       @id @default(autoincrement())
+  status      String    @default("created")
+  trendStatus String    @default("created") @map("trend_status")
+  data        Json      @default("{}")
+  direction   String    @default("up")
+  notifiedAt  DateTime? @map("notified_at")
+  confirmed   Boolean   @default(false)
+  tf          Int       @default(60)
+  settings    Json      @default("{}")
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  strategyId Int      @map("strategy_id")
+  strategy   Strategy @relation(fields: [strategyId], references: [id], onDelete: Restrict)
+
+  lowTs     BigInt   @map("low_ts")
+  highTs    BigInt   @map("high_ts")
+  startTs   BigInt   @map("start_ts")
+  finishTs  BigInt?  @map("finish_ts")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([pairId])
+  @@index([strategyId, pairId])
+  @@index([strategyId, pairId, status])
+  @@map("dhm2_strategy_sessions")
+}
+
+model TestStrategySession {
+  id          Int       @id @default(autoincrement())
+  status      String    @default("created")
+  trendStatus String    @default("created") @map("trend_status")
+  data        Json      @default("{}")
+  direction   String    @default("up")
+  notifiedAt  DateTime? @map("notified_at")
+  confirmed   Boolean   @default(false)
+  tf          Int       @default(60)
+  settings    Json      @default("{}")
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  strategyId Int      @map("strategy_id")
+  strategy   Strategy @relation(fields: [strategyId], references: [id], onDelete: Restrict)
+
+  startTs   BigInt   @map("start_ts")
+  finishTs  BigInt?  @map("finish_ts")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([pairId])
+  @@map("test_strategy_sessions")
+}
+
+model TestDhm2StrategySession {
+  id          Int       @id @default(autoincrement())
+  status      String    @default("created")
+  trendStatus String    @default("created") @map("trend_status")
+  data        Json      @default("{}")
+  direction   String    @default("up")
+  notifiedAt  DateTime? @map("notified_at")
+  confirmed   Boolean   @default(false)
+  tf          Int       @default(60)
+  settings    Json      @default("{}")
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  strategyId Int      @map("strategy_id")
+  strategy   Strategy @relation(fields: [strategyId], references: [id], onDelete: Restrict)
+
+  lowTs     BigInt   @map("low_ts")
+  highTs    BigInt   @map("high_ts")
+  startTs   BigInt   @map("start_ts")
+  finishTs  BigInt?  @map("finish_ts")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([pairId])
+  @@index([strategyId, pairId])
+  @@index([strategyId, pairId, status])
+  @@map("test_dhm2_strategy_sessions")
+}
+
+model HistoryStrategySession {
+  id     Int    @id @default(autoincrement())
+  status String @default("waiting")
+  data   Json   @default("{}")
+
+  pairId Int  @map("pair_id")
+  pair   Pair @relation(fields: [pairId], references: [id], onDelete: Restrict)
+
+  trxs StrategySessionTrx[]
+
+  startTs   BigInt   @map("start_ts")
+  finishTs  BigInt?  @map("finish_ts")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("history_strategy_sessions")
+}
+
+model StrategySessionTrx {
+  id       Int    @id @default(autoincrement())
+  status   String @default("pending")
+  value    String @db.VarChar(50)
+  side     String
+  type     String
+  quantity String @db.VarChar(50)
+  price    String @db.VarChar(50)
+
+  strategySessionId Int             @map("strategy_session_id")
+  strategySession   StrategySession @relation(fields: [strategySessionId], references: [id], onDelete: Restrict)
+
+  createdAt                DateTime                @default(now()) @map("created_at")
+  HistoryStrategySession   HistoryStrategySession? @relation(fields: [historyStrategySessionId], references: [id])
+  historyStrategySessionId Int?
+
+  @@map("strategy_session_trxs")
+}

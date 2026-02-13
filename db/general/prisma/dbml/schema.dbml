@@ -1,0 +1,287 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table trading_services {
+  id Int [pk, increment]
+  name String [unique, not null]
+  pairs pairs [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table strategy_settings {
+  id Int [pk, increment]
+  data Json [not null, default: '{}']
+  tf Int [not null, default: 60]
+  strategyId Int [not null]
+  strategy strategies [not null]
+  pairId Int [not null]
+  pair pairs [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (strategyId, tf, pairId) [unique]
+  }
+}
+
+Table pairs {
+  id Int [pk, increment]
+  name String [not null]
+  symbol String [not null]
+  precision Int [not null, default: 2]
+  startTs BigInt [not null, default: 0]
+  currentTs BigInt [not null, default: 0]
+  activated Boolean [not null, default: true]
+  isUsedToKline Boolean [not null, default: true]
+  isUsedToBidasks Boolean [not null, default: true]
+  tickerAnswerSymbol String
+  clusterPrecision Json [not null, default: '{}']
+  orders orders [not null]
+  positions positions [not null]
+  trades trades [not null]
+  strategySessions strategy_sessions [not null]
+  testStrategySession test_strategy_sessions [not null]
+  dhm2StrategySessions dhm2_strategy_sessions [not null]
+  testDhm2StrategySessions test_dhm2_strategy_sessions [not null]
+  historyStrategySessions history_strategy_sessions [not null]
+  tdaPoints tda_points [not null]
+  settings strategy_settings [not null]
+  tradingServiceId Int [not null]
+  tradingService trading_services [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (name, tradingServiceId) [unique]
+    (symbol, tradingServiceId) [unique]
+  }
+}
+
+Table tda_points {
+  id String [pk]
+  side String [not null, default: 'buy']
+  tf Int [not null, default: 60]
+  ts BigInt [not null]
+  data Json [not null, default: '{}']
+  pairId Int [not null]
+  pair pairs [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table orders {
+  id String [pk]
+  status String
+  orderType String
+  stopOrderType String
+  side String [not null, default: 'buy']
+  data Json [not null, default: '{}']
+  pairId Int [not null]
+  pair pairs [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table positions {
+  id String [pk]
+  status String
+  orderType String
+  stopOrderType String
+  side String [not null, default: 'buy']
+  data Json [not null, default: '{}']
+  pairId Int [not null]
+  pair pairs [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table trades {
+  id String [pk]
+  side String [not null, default: 'buy']
+  data Json [not null, default: '{}']
+  pairId Int [not null]
+  pair pairs [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table balances {
+  id Int [pk, increment]
+  symbol String [unique, not null]
+  value String [not null, default: '0']
+  trxs balance_trxs [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table balance_trxs {
+  id Int [pk, increment]
+  balanceBefore String [not null, default: '0']
+  balanceAfter String [not null, default: '0']
+  status String [not null, default: 'pending']
+  side String [not null]
+  type String [not null]
+  quantity String [not null]
+  price String [not null]
+  balanceId Int [unique, not null]
+  balance balances [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table strategies {
+  id Int [pk, increment]
+  name String [unique, not null]
+  sessions strategy_sessions [not null]
+  testSessions test_strategy_sessions [not null]
+  dhm2StrategySessions dhm2_strategy_sessions [not null]
+  testDhm2StrategySessions test_dhm2_strategy_sessions [not null]
+  settings strategy_settings [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table strategy_sessions {
+  id Int [pk, increment]
+  status String [not null, default: 'created']
+  trendStatus String [not null, default: 'created']
+  data Json [not null, default: '{}']
+  direction String [not null, default: 'up']
+  notifiedAt DateTime
+  confirmed Boolean [not null, default: false]
+  tf Int [not null, default: 60]
+  settings Json [not null, default: '{}']
+  pairId Int [not null]
+  pair pairs [not null]
+  strategyId Int [not null]
+  strategy strategies [not null]
+  trxs strategy_session_trxs [not null]
+  startTs BigInt [not null]
+  finishTs BigInt
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table dhm2_strategy_sessions {
+  id Int [pk, increment]
+  status String [not null, default: 'created']
+  trendStatus String [not null, default: 'created']
+  data Json [not null, default: '{}']
+  direction String [not null, default: 'up']
+  notifiedAt DateTime
+  confirmed Boolean [not null, default: false]
+  tf Int [not null, default: 60]
+  settings Json [not null, default: '{}']
+  pairId Int [not null]
+  pair pairs [not null]
+  strategyId Int [not null]
+  strategy strategies [not null]
+  lowTs BigInt [not null]
+  highTs BigInt [not null]
+  startTs BigInt [not null]
+  finishTs BigInt
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table test_strategy_sessions {
+  id Int [pk, increment]
+  status String [not null, default: 'created']
+  trendStatus String [not null, default: 'created']
+  data Json [not null, default: '{}']
+  direction String [not null, default: 'up']
+  notifiedAt DateTime
+  confirmed Boolean [not null, default: false]
+  tf Int [not null, default: 60]
+  settings Json [not null, default: '{}']
+  pairId Int [not null]
+  pair pairs [not null]
+  strategyId Int [not null]
+  strategy strategies [not null]
+  startTs BigInt [not null]
+  finishTs BigInt
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table test_dhm2_strategy_sessions {
+  id Int [pk, increment]
+  status String [not null, default: 'created']
+  trendStatus String [not null, default: 'created']
+  data Json [not null, default: '{}']
+  direction String [not null, default: 'up']
+  notifiedAt DateTime
+  confirmed Boolean [not null, default: false]
+  tf Int [not null, default: 60]
+  settings Json [not null, default: '{}']
+  pairId Int [not null]
+  pair pairs [not null]
+  strategyId Int [not null]
+  strategy strategies [not null]
+  lowTs BigInt [not null]
+  highTs BigInt [not null]
+  startTs BigInt [not null]
+  finishTs BigInt
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table history_strategy_sessions {
+  id Int [pk, increment]
+  status String [not null, default: 'waiting']
+  data Json [not null, default: '{}']
+  pairId Int [not null]
+  pair pairs [not null]
+  trxs strategy_session_trxs [not null]
+  startTs BigInt [not null]
+  finishTs BigInt
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table strategy_session_trxs {
+  id Int [pk, increment]
+  status String [not null, default: 'pending']
+  value String [not null]
+  side String [not null]
+  type String [not null]
+  quantity String [not null]
+  price String [not null]
+  strategySessionId Int [not null]
+  strategySession strategy_sessions [not null]
+  createdAt DateTime [default: `now()`, not null]
+  HistoryStrategySession history_strategy_sessions
+  historyStrategySessionId Int
+}
+
+Ref: strategy_settings.strategyId > strategies.id [delete: Restrict]
+
+Ref: strategy_settings.pairId > pairs.id [delete: Restrict]
+
+Ref: pairs.tradingServiceId > trading_services.id [delete: Restrict]
+
+Ref: tda_points.pairId > pairs.id [delete: Restrict]
+
+Ref: orders.pairId > pairs.id [delete: Restrict]
+
+Ref: positions.pairId > pairs.id [delete: Restrict]
+
+Ref: trades.pairId > pairs.id [delete: Restrict]
+
+Ref: balance_trxs.balanceId > balances.id [delete: Restrict]
+
+Ref: strategy_sessions.pairId > pairs.id [delete: Restrict]
+
+Ref: strategy_sessions.strategyId > strategies.id [delete: Restrict]
+
+Ref: dhm2_strategy_sessions.pairId > pairs.id [delete: Restrict]
+
+Ref: dhm2_strategy_sessions.strategyId > strategies.id [delete: Restrict]
+
+Ref: test_strategy_sessions.pairId > pairs.id [delete: Restrict]
+
+Ref: test_strategy_sessions.strategyId > strategies.id [delete: Restrict]
+
+Ref: test_dhm2_strategy_sessions.pairId > pairs.id [delete: Restrict]
+
+Ref: test_dhm2_strategy_sessions.strategyId > strategies.id [delete: Restrict]
+
+Ref: history_strategy_sessions.pairId > pairs.id [delete: Restrict]
+
+Ref: strategy_session_trxs.strategySessionId > strategy_sessions.id [delete: Restrict]
+
+Ref: strategy_session_trxs.historyStrategySessionId > history_strategy_sessions.id

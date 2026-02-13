@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.db/klines/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("KLINES_DATABASE_URL")
+}
+
+generator dbml {
+  provider = "prisma-dbml-generator"
+}
+
+model Kline {
+  id       String @id @unique @default(uuid())
+  open     String @db.VarChar(50)
+  close    String @db.VarChar(50)
+  low      String @db.VarChar(50)
+  high     String @db.VarChar(50)
+  volume   String @db.VarChar(50)
+  ts       BigInt
+  interval Int    @default(1)
+
+  pairId Int @map("pair_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([ts, pairId, interval])
+  @@map("klines")
+}
+
+model XVKline {
+  id         String @id @unique @default(uuid())
+  open       String @db.VarChar(50)
+  close      String @db.VarChar(50)
+  low        String @db.VarChar(50)
+  high       String @db.VarChar(50)
+  volume     String @db.VarChar(50)
+  ts         BigInt
+  multiplier Int    @default(1)
+  position   Int    @default(0)
+
+  pairId Int @map("pair_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([ts, pairId, position, multiplier])
+  @@map("xv_klines")
+}

@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.db/bidasks/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("BIDASKS_DATABASE_URL")
+}
+
+generator dbml {
+  provider = "prisma-dbml-generator"
+}
+
+model Trade {
+  id     String @id @unique @default(uuid())
+  ts     BigInt
+  side   String @db.VarChar(10)
+  price  String @db.VarChar(50)
+  amount String @db.VarChar(50)
+  cost   String @db.VarChar(50)
+
+  pairId Int @map("pair_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("trades")
+}
+
+model Cluster {
+  id   String @id @unique @default(uuid())
+  ts   BigInt
+  tf   Int    @default(1)
+  data Json   @default("{}")
+  v    Int    @default(0)
+
+  pairId Int @map("pair_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([ts, tf, pairId])
+  @@index([pairId])
+  @@map("clusters")
+}
+
+model Fpp {
+  id        String @id @unique @default(uuid())
+  ts        BigInt
+  tf        Int    @default(1)
+  direction String @default("up")
+  type      String @default("interception")
+
+  pairId Int @map("pair_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([ts, tf, pairId, type])
+  @@index([pairId])
+  @@map("fpp")
+}
