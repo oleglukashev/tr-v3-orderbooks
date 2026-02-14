@@ -8,6 +8,7 @@ import { PairsEntityService } from './modules/entity-services/pairs-entity-servi
 import { OrderbooksStorageService } from './modules/orderbooks-storage/orderbooks-storage.service';
 import sleep from './utils/sleep';
 import { WebsocketStreamService } from './modules/websocket-gateway/websocket-stream.service';
+import { nowTs } from './utils/time';
 
 @Injectable()
 export class AppService {
@@ -16,6 +17,8 @@ export class AppService {
     private readonly orderbooksStorageService: OrderbooksStorageService,
     private readonly websocketStreamService: WebsocketStreamService,
   ) {}
+
+  //times: any = {};
 
   async init(): Promise<any> {
     await this.initTradesProcess();
@@ -51,10 +54,18 @@ export class AppService {
 
     await exchange.loadMarkets();
 
-    const symbols = pairsForbidasks.map((pair: any) => pair.symbol);
-    if (symbols.length > 0) {
-      this.watchOrderbookProcess({ exchange, symbols });
+    //const symbols = pairsForbidasks.map((pair: any) => pair.symbol);
+
+    const times = {};
+
+    for (const pair of pairsForbidasks) {
+      times[pair.id] = nowTs();
+      this.watchOrderbookProcess({ exchange, pair, times });
     }
+
+    // if (symbols.length > 0) {
+    //   this.watchOrderbookProcess({ exchange, symbols });
+    // }
   }
 
   // private async watchTradesProcess({ exchange, pair }: any) {
@@ -88,20 +99,42 @@ export class AppService {
   //   }
   // }
 
-  private async watchOrderbookProcess({ exchange, symbols }: any) {
+  private async watchOrderbookProcess({ exchange, pair, times }: any) {
     while (true) {
       try {
-        const data = await exchange.watchOrderBookForSymbols(symbols, 1000);
-        for (const item of data) {
-          //const pairId = pair.id;
-          //await this.orderbooksStorageService.processOrderbook(item, 5, )
-          console.log(item);
+        const changedSymbol = pair.symbol.replace('USDT', '/USDT:USDT');
+        const data = await exchange.watchOrderBook(changedSymbol, 1000);
+        const now = nowTs();
+
+        // Accept data every 5 sec only
+        if (now - times[pair.id] < 5000) {
+          continue;
+        }
+
+        times[pair.id] = now;
+
+        if (pair.clusterPrecision) {
+          for (const tfAsString in pair.clusterPrecision) {
+            const tf = parseInt(tfAsString);
+            if (tf !== 5) {
+              continue;
+            }
+
+            const clusterSize = pair.clusterPrecision[tfAsString];
+            //console.log('data', data);
+            this.orderbooksStorageService.processOrderbook(
+              data,
+              5,
+              pair.id,
+              clusterSize,
+            );
+          }
         }
       } catch (error: any) {
         console.error('Orderbook WebSocket connection error:', error.message);
         console.log('Reconnecting in 1 second...');
         await sentToBot(
-          `orderbook microservice: ${symbols.join(',')} - ${error.message}`,
+          `orderbook microservice: ${pair.symbol} - ${error.message}`,
         );
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
