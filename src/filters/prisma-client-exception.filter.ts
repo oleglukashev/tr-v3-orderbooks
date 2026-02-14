@@ -1,11 +1,11 @@
 import { ArgumentsHost, Catch, HttpStatus } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { Prisma } from '@prisma/client';
 import { Response } from 'express';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
-@Catch(Prisma.PrismaClientKnownRequestError)
+@Catch(PrismaClientKnownRequestError)
 export class PrismaClientExceptionFilter extends BaseExceptionFilter {
-  catch(exception: Prisma.PrismaClientKnownRequestError, host: ArgumentsHost) {
+  catch(exception: PrismaClientKnownRequestError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const message = exception.message.replace(/\n/g, '');
@@ -14,7 +14,10 @@ export class PrismaClientExceptionFilter extends BaseExceptionFilter {
       case 'P2002': {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        const key = exception.meta?.target?.join(', ') || exception.meta?.field_name;
+        const key =
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          exception.meta?.target?.join(', ') || exception.meta?.field_name;
         const status = HttpStatus.BAD_REQUEST;
         response.status(status).json({
           statusCode: status,
@@ -25,7 +28,10 @@ export class PrismaClientExceptionFilter extends BaseExceptionFilter {
       case 'P2003': {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        const key = exception.meta?.target?.join(', ') || exception.meta?.field_name;
+        const key =
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          exception.meta?.target?.join(', ') || exception.meta?.field_name;
         const status = HttpStatus.BAD_REQUEST;
         response.status(status).json({
           statusCode: status,
