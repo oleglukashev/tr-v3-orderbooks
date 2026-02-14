@@ -5,7 +5,7 @@ import {
   Logger,
   OnModuleDestroy,
 } from '@nestjs/common';
-import { PrismaClient } from '.db/bidasks/generated';
+import { PrismaClient } from '.db/orderbooks/generated';
 
 @Injectable()
 export class OrderbooksPrismaService

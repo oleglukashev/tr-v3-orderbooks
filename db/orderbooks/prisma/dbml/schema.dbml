@@ -2,7 +2,7 @@
 //// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 //// ------------------------------------------------------
 
-Table clusters {
+Table orderbooks {
   id String [pk]
   ts BigInt [not null]
   tf Int [not null, default: 1]

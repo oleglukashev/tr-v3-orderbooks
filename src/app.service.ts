@@ -92,9 +92,11 @@ export class AppService {
     while (true) {
       try {
         const data = await exchange.watchOrderBookForSymbols(symbols, 1000);
-        console.log(data);
-        console.log('bids', data.bids[0], data.bids[data.bids.length - 1]);
-        console.log('asks', data.asks[0], data.asks[data.asks.length - 1]);
+        for (const item of data) {
+          //const pairId = pair.id;
+          //await this.orderbooksStorageService.processOrderbook(item, 5, )
+          console.log(item);
+        }
       } catch (error: any) {
         console.error('Orderbook WebSocket connection error:', error.message);
         console.log('Reconnecting in 1 second...');
