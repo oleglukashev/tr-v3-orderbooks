@@ -7,11 +7,11 @@ import {
 import WebSocket, { WebSocketServer } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  BidaskStreamPayload,
+  OrderbookStreamPayload,
   WebsocketStreamService,
 } from './websocket-stream.service';
 
-type WsBidaskSubscription = {
+type WsOrderbookSubscription = {
   ws: WebSocket;
   tf: number;
   pairId: number;
@@ -20,20 +20,20 @@ type WsBidaskSubscription = {
 @Injectable()
 export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WebsocketGatewayService.name);
-  private readonly bidaskSubscriptions = new Map<
+  private readonly orderbookSubscriptions = new Map<
     string,
-    WsBidaskSubscription
+    WsOrderbookSubscription
   >();
-  private readonly bidaskSubscriptionsByPairId = new Map<
+  private readonly orderbookSubscriptionsByPairId = new Map<
     string,
-    WsBidaskSubscription
+    WsOrderbookSubscription
   >();
-  private readonly bidaskSubscriptionsByPairIdAndTf = new Map<
+  private readonly orderbookSubscriptionsByPairIdAndTf = new Map<
     string,
-    WsBidaskSubscription
+    WsOrderbookSubscription
   >();
   private wss?: WebSocketServer;
-  private unsubscribeBidasks?: () => void;
+  private unsubscribeOrderbooks?: () => void;
 
   constructor(private readonly websocketStream: WebsocketStreamService) {}
 
@@ -46,15 +46,15 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
 
     this.wss = new WebSocketServer({ port });
     this.wss.on('connection', (ws) => this.handleConnection(ws));
-    this.unsubscribeBidasks = this.websocketStream.onBidasks((payload) =>
-      this.broadcastBidasks(payload),
+    this.unsubscribeOrderbooks = this.websocketStream.onOrderbooks((payload) =>
+      this.broadcastOrderbooks(payload),
     );
 
     this.logger.log(`WebSocket server listening on ws://localhost:${port}`);
   }
 
   onModuleDestroy() {
-    this.unsubscribeBidasks?.();
+    this.unsubscribeOrderbooks?.();
     this.wss?.close();
   }
 
@@ -66,13 +66,13 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
     ws.on('message', (msg) => this.handleMessage(ws, msg));
     ws.on('close', () => {
       try {
-        this.bidaskSubscriptions.delete(connectionId);
+        this.orderbookSubscriptions.delete(connectionId);
       } catch (e) {}
       try {
-        this.bidaskSubscriptionsByPairId.delete(connectionId);
+        this.orderbookSubscriptionsByPairId.delete(connectionId);
       } catch (e) {}
       try {
-        this.bidaskSubscriptionsByPairIdAndTf.delete(connectionId);
+        this.orderbookSubscriptionsByPairIdAndTf.delete(connectionId);
       } catch (e) {}
       this.logger.log(`Client disconnected: ${connectionId}`);
     });
@@ -82,12 +82,12 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
     try {
       const data = JSON.parse(msg.toString());
       if (
-        data.type === 'subscribeBidasksByPairIdAndTf' &&
+        data.type === 'subscribeOrderbooksByPairIdAndTf' &&
         data.pairId &&
         data.tf
       ) {
         const connectionId = (ws as any).id;
-        this.bidaskSubscriptionsByPairIdAndTf.set(connectionId, {
+        this.orderbookSubscriptionsByPairIdAndTf.set(connectionId, {
           ws,
           tf: data.tf,
           pairId: data.pairId,
@@ -101,7 +101,7 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
         data.tf
       ) {
         const connectionId = (ws as any).id;
-        this.bidaskSubscriptionsByPairId.set(connectionId, {
+        this.orderbookSubscriptionsByPairId.set(connectionId, {
           ws,
           tf: data.tf,
           pairId: data.pairId,
@@ -111,7 +111,7 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
         );
       } else if (data.type === 'subscribeBidasks') {
         const connectionId = (ws as any).id;
-        this.bidaskSubscriptions.set(connectionId, {
+        this.orderbookSubscriptions.set(connectionId, {
           ws,
           tf: data.tf,
           pairId: data.pairId,
@@ -172,40 +172,40 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
   //   }
   // }
 
-  private broadcastBidasks(bidasks: BidaskStreamPayload[]) {
-    if (this.bidaskSubscriptions.size > 0) {
+  private broadcastOrderbooks(orderbooks: OrderbookStreamPayload[]) {
+    if (this.orderbookSubscriptions.size > 0) {
       const message = JSON.stringify({
-        type: 'bidasks',
-        data: bidasks,
+        type: 'orderbooks',
+        data: orderbooks,
       });
-      for (const key of this.bidaskSubscriptions.keys()) {
-        const wsData = this.bidaskSubscriptions.get(key);
+      for (const key of this.orderbookSubscriptions.keys()) {
+        const wsData = this.orderbookSubscriptions.get(key);
         if (wsData.ws.readyState === WebSocket.OPEN) {
           wsData.ws.send(message);
         }
       }
     }
 
-    if (this.bidaskSubscriptionsByPairId.size > 0) {
-      for (const key of this.bidaskSubscriptionsByPairId.keys()) {
-        const wsData = this.bidaskSubscriptionsByPairId.get(key);
+    if (this.orderbookSubscriptionsByPairId.size > 0) {
+      for (const key of this.orderbookSubscriptionsByPairId.keys()) {
+        const wsData = this.orderbookSubscriptionsByPairId.get(key);
         if (wsData.ws.readyState === WebSocket.OPEN) {
           const message = JSON.stringify({
-            type: 'bidasks',
-            data: bidasks.filter((item) => item.pairId === wsData.pairId),
+            type: 'orderbooks',
+            data: orderbooks.filter((item) => item.pairId === wsData.pairId),
           });
           wsData.ws.send(message);
         }
       }
     }
 
-    if (this.bidaskSubscriptionsByPairIdAndTf.size > 0) {
-      for (const key of this.bidaskSubscriptionsByPairIdAndTf.keys()) {
-        const wsData = this.bidaskSubscriptionsByPairIdAndTf.get(key);
+    if (this.orderbookSubscriptionsByPairIdAndTf.size > 0) {
+      for (const key of this.orderbookSubscriptionsByPairIdAndTf.keys()) {
+        const wsData = this.orderbookSubscriptionsByPairIdAndTf.get(key);
         if (wsData.ws.readyState === WebSocket.OPEN) {
           const message = JSON.stringify({
-            type: 'bidasks',
-            data: bidasks.filter(
+            type: 'orderbooks',
+            data: orderbooks.filter(
               (item) => item.pairId === wsData.pairId && wsData.tf === item.tf,
             ),
           });

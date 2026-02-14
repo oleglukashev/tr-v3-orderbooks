@@ -2,8 +2,9 @@
 CREATE TABLE "clusters" (
     "id" TEXT NOT NULL,
     "ts" BIGINT NOT NULL,
+    "tf" INTEGER NOT NULL DEFAULT 1,
     "data" JSONB NOT NULL DEFAULT '{}',
-    "trade_id" TEXT NOT NULL,
+    "v" INTEGER NOT NULL DEFAULT 0,
     "pair_id" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -15,10 +16,7 @@ CREATE TABLE "clusters" (
 CREATE UNIQUE INDEX "clusters_id_key" ON "clusters"("id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "clusters_trade_id_key" ON "clusters"("trade_id");
+CREATE INDEX "clusters_pair_id_idx" ON "clusters"("pair_id");
 
 -- CreateIndex
-CREATE INDEX "clusters_trade_id_idx" ON "clusters"("trade_id");
-
--- AddForeignKey
-ALTER TABLE "clusters" ADD CONSTRAINT "clusters_trade_id_fkey" FOREIGN KEY ("trade_id") REFERENCES "trades"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE UNIQUE INDEX "clusters_ts_tf_pair_id_key" ON "clusters"("ts", "tf", "pair_id");

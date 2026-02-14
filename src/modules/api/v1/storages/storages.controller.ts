@@ -1,13 +1,13 @@
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
-import { BidasksStorageService } from '../../../bidasks-storage/bidasks-storage.service';
+import { OrderbooksStorageService } from '../../../orderbooks-storage/orderbooks-storage.service';
 
 @ApiTags('Storages')
 @Controller({ path: 'api/v1/storages' })
 export class ApiStoragesController {
-  constructor(private readonly bidasksStorageService: BidasksStorageService) {}
+  constructor(private readonly bidasksStorageService: OrderbooksStorageService) {}
 
-  @Get('bidasks')
+  @Get('orderbooks')
   @ApiOkResponse({ description: 'Bidasks storage entries' })
   @HttpCode(HttpStatus.OK)
   getBidasks(): any {

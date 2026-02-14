@@ -1,4 +1,4 @@
-db/bidasks/prisma/generated
+db/orderbooks/prisma/generated
 db/klines/prisma/generated
 db/general/prisma/generated
 

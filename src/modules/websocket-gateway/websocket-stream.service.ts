@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter } from 'events';
 
-export type BidaskStreamPayload = {
+export type OrderbookStreamPayload = {
   pairId: number;
   tf: number;
   ts: number;
@@ -12,14 +12,16 @@ export type BidaskStreamPayload = {
 @Injectable()
 export class WebsocketStreamService {
   private readonly emitter = new EventEmitter();
-  private readonly bidasksEvent = 'bidasks';
+  private readonly orderbooksEvent = 'orderbooks';
 
-  onBidasks(handler: (payload: BidaskStreamPayload[]) => void): () => void {
-    this.emitter.on(this.bidasksEvent, handler);
-    return () => this.emitter.off(this.bidasksEvent, handler);
+  onOrderbooks(
+    handler: (payload: OrderbookStreamPayload[]) => void,
+  ): () => void {
+    this.emitter.on(this.orderbooksEvent, handler);
+    return () => this.emitter.off(this.orderbooksEvent, handler);
   }
 
-  emitBidasks(payload: BidaskStreamPayload[]) {
-    this.emitter.emit(this.bidasksEvent, payload);
+  emitOrderbooks(payload: OrderbookStreamPayload[]) {
+    this.emitter.emit(this.orderbooksEvent, payload);
   }
 }

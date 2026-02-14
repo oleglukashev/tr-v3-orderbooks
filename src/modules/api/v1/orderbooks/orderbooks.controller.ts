@@ -9,20 +9,20 @@ import {
   ParseIntPipe,
   NotFoundException,
 } from '@nestjs/common';
-import { ClustersEntityService } from '../../../entity-services/clusters-entity-service';
-import { BidasksStorageService } from '../../../bidasks-storage/bidasks-storage.service';
+import { OrderbooksEntityService } from '../../../entity-services/orderbooks-entity-service';
+import { OrderbooksStorageService } from '../../../orderbooks-storage/orderbooks-storage.service';
 
 @ApiTags('Products')
 @ApiBearerAuth()
-@Controller({ path: 'api/v1/clusters' })
+@Controller({ path: 'api/v1/orderbooks' })
 export class ApiClustersController {
   constructor(
-    private readonly clustersEntityService: ClustersEntityService,
-    private readonly bidasksStorageService: BidasksStorageService,
+    private readonly orderbooksEntityService: OrderbooksEntityService,
+    private readonly orderbooksStorageService: OrderbooksStorageService,
   ) {}
 
   @Get('')
-  @ApiOkResponse({ description: 'List of clusters' })
+  @ApiOkResponse({ description: 'List of orderbooks' })
   @HttpCode(HttpStatus.OK)
   public async index(
     @Query('pairId', new DefaultValuePipe(false), ParseIntPipe) pairId,
@@ -30,7 +30,7 @@ export class ApiClustersController {
     @Query('page', new DefaultValuePipe(false), ParseIntPipe) page,
     @Query('limit', new DefaultValuePipe(false), ParseIntPipe) limit,
   ): Promise<any> {
-    return this.clustersEntityService.findMany({
+    return this.orderbooksEntityService.findMany({
       where: {
         pairId,
         tf,
@@ -49,7 +49,7 @@ export class ApiClustersController {
     @Query('tf', new DefaultValuePipe(false), ParseIntPipe) tf,
     @Query('ts', new DefaultValuePipe(false), ParseIntPipe) ts,
   ): Promise<any> {
-    let cluster = await this.clustersEntityService.findFirst({
+    let cluster = await this.orderbooksEntityService.findFirst({
       where: {
         pairId: { equals: pairId },
         tf: { equals: tf },
@@ -58,7 +58,7 @@ export class ApiClustersController {
     });
 
     if (!cluster || !Object.keys(cluster.data).length) {
-      const storageBidask = this.bidasksStorageService.getBidask(
+      const storageBidask = this.orderbooksStorageService.getOrderbook(
         pairId,
         tf,
         ts,
@@ -67,7 +67,7 @@ export class ApiClustersController {
       if (storageBidask) {
         cluster = storageBidask;
       } else {
-        throw new NotFoundException('Cluster not found');
+        throw new NotFoundException('Orerbook not found');
       }
     }
 

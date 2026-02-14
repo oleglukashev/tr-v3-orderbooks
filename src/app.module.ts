@@ -2,19 +2,18 @@ import { Module } from '@nestjs/common';
 import { EntityModule } from './modules/entity-services/entities.module';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
-import { ApiClustersModule } from './modules/api/v1/clusters/clusters.module';
+import { ApiClustersModule } from './modules/api/v1/orderbooks/orderbooks.module';
 //import { GenerateFppModule } from './modules/generate-fpp/generate-fpp.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ApiFppModule } from './modules/api/v1/fpp/fpp.module';
 //import { RedisModule } from '@nestjs-modules/ioredis';
-import { MoveClustersFromStorageToBdModule } from './modules/move-clusters-from-storage-to-bd/move-clusters-from-storage-to-bd.module';
+import { MoveOrderbooksFromStorageToBdModule } from './modules/move-orderbooks-from-storage-to-bd/move-orderbooks-from-storage-to-bd.module';
 import { GeneralPrismaModule } from './modules/generalPrisma/generalPrisma.module';
-import { BidasksPrismaModule } from './modules/bidasksPrisma/bidasksPrisma.module';
+import { OrderbooksPrismaModule } from './modules/orderbooksPrisma/orderbooksPrisma.module';
 // import { BullBoardModule } from '@bull-board/nestjs';
 // import { ExpressAdapter } from '@bull-board/express';
 // import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 // import { BullModule } from '@nestjs/bullmq';
-import { BidasksStorageModule } from './modules/bidasks-storage/bidasks-storage.module';
+import { OrderbooksStorageModule } from './modules/orderbooks-storage/orderbooks-storage.module';
 import { WebsocketGatewayModule } from './modules/websocket-gateway/websocket-gateway.module';
 import { ApiStoragesModule } from './modules/api/v1/storages/storages.module';
 
@@ -22,7 +21,7 @@ import { ApiStoragesModule } from './modules/api/v1/storages/storages.module';
   imports: [
     GeneralPrismaModule,
     //KlinesPrismaModule,
-    BidasksPrismaModule,
+    OrderbooksPrismaModule,
     ConfigModule.forRoot(),
     ScheduleModule.forRoot(),
     // RedisModule.forRoot(
@@ -41,21 +40,20 @@ import { ApiStoragesModule } from './modules/api/v1/storages/storages.module';
     //     db: 5,
     //   },
     // }),
-    // BullModule.registerQueue({ name: 'bidasks' }),
+    // BullModule.registerQueue({ name: 'orderbooks' }),
     // BullBoardModule.forRoot({
     //   route: '/queues',
     //   adapter: ExpressAdapter,
     // }),
     // BullBoardModule.forFeature({
-    //   name: 'bidasks',
+    //   name: 'orderbooks',
     //   adapter: BullMQAdapter,
     // }),
     EntityModule,
     //GenerateFppModule,
-    BidasksStorageModule,
-    MoveClustersFromStorageToBdModule,
+    OrderbooksStorageModule,
+    MoveOrderbooksFromStorageToBdModule,
     ApiClustersModule,
-    ApiFppModule,
     ApiStoragesModule,
     WebsocketGatewayModule,
   ],

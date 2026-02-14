@@ -1,19 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { getStartTsByTf, startOfMinuteTs } from '../../utils/time';
-import { ClustersEntityService } from '../entity-services/clusters-entity-service';
+import { OrderbooksEntityService } from '../entity-services/orderbooks-entity-service';
 
 @Injectable()
-export class MoveClustersFromStorageToBdCronService {
-  constructor(private readonly clustersEntityService: ClustersEntityService) {}
+export class MoveOrderbooksFromStorageToBdCronService {
+  constructor(
+    private readonly orderbooksEntityService: OrderbooksEntityService,
+  ) {}
 
   @Cron('* * * * *')
   async handleEveryMinuteCron() {
     const now = startOfMinuteTs();
-    await this.clustersEntityService.moveBidasksFromStorageToBdByTf(1);
+    //await this.clustersEntityService.moveOrderbooksFromStorageToBdByTf(1);
 
     if (now === getStartTsByTf(now, 5)) {
-      await this.clustersEntityService.moveBidasksFromStorageToBdByTf(5);
+      await this.orderbooksEntityService.moveOrderbooksFromStorageToBdByTf(5);
     }
 
     // if (now === getStartTsByTf(now, 15)) {

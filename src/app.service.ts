@@ -5,7 +5,7 @@ import ccxt from 'ccxt';
 import * as process from 'node:process';
 import sentToBot from './utils/bot';
 import { PairsEntityService } from './modules/entity-services/pairs-entity-service';
-import { BidasksStorageService } from './modules/bidasks-storage/bidasks-storage.service';
+import { OrderbooksStorageService } from './modules/orderbooks-storage/orderbooks-storage.service';
 import sleep from './utils/sleep';
 import { WebsocketStreamService } from './modules/websocket-gateway/websocket-stream.service';
 
@@ -13,13 +13,13 @@ import { WebsocketStreamService } from './modules/websocket-gateway/websocket-st
 export class AppService {
   constructor(
     private readonly pairsEntityService: PairsEntityService,
-    private readonly bidasksStorageService: BidasksStorageService,
+    private readonly orderbooksStorageService: OrderbooksStorageService,
     private readonly websocketStreamService: WebsocketStreamService,
   ) {}
 
   async init(): Promise<any> {
     await this.initTradesProcess();
-    //this.bidasksStream();
+    this.orderbooksStream();
   }
 
   private async initTradesProcess() {
@@ -38,7 +38,7 @@ export class AppService {
       apiKey: process.env.API_KEY,
       secret: process.env.API_SECRET,
       options: {
-        defaultType: tradingServiceData.types.future.name, // Устанавливаем тип рынка на фьючерсный
+        defaultType: 'linear', // Устанавливаем тип рынка на фьючерсный
       },
     });
 
@@ -67,7 +67,7 @@ export class AppService {
   //     } catch (error: any) {
   //       console.error('WebSocket connection error:', error.message);
   //       console.log('Reconnecting in 1 second...');
-  //       await sentToBot(`bidasks microservice: ${pair.symbol} - ${error.message}`);
+  //       await sentToBot(`orderbooks microservice: ${pair.symbol} - ${error.message}`);
   //       await new Promise((resolve) => setTimeout(resolve, 1000));
   //     }
 
@@ -91,8 +91,10 @@ export class AppService {
   private async watchOrderbookProcess({ exchange, symbols }: any) {
     while (true) {
       try {
-        const data = await exchange.watchOrderBookForSymbols(symbols);
-        console.log('data', data);
+        const data = await exchange.watchOrderBookForSymbols(symbols, 1000);
+        console.log(data);
+        console.log('bids', data.bids[0], data.bids[data.bids.length - 1]);
+        console.log('asks', data.asks[0], data.asks[data.asks.length - 1]);
       } catch (error: any) {
         console.error('Orderbook WebSocket connection error:', error.message);
         console.log('Reconnecting in 1 second...');
@@ -104,11 +106,11 @@ export class AppService {
     }
   }
 
-  // private async bidasksStream() {
-  //   while (true) {
-  //     const bidasks: any[] = this.bidasksStorageService.entries();
-  //     this.websocketStreamService.emitBidasks(bidasks);
-  //     await sleep(5000);
-  //   }
-  // }
+  private async orderbooksStream() {
+    while (true) {
+      const orderbooks: any[] = this.orderbooksStorageService.entries();
+      this.websocketStreamService.emitOrderbooks(orderbooks);
+      await sleep(5000);
+    }
+  }
 }

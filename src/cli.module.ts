@@ -1,16 +1,15 @@
 import { Module } from '@nestjs/common';
 import { EntityModule } from './modules/entity-services/entities.module';
-import { GrabTradesCommand } from './commands/grab-trades.command';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { GeneralPrismaModule } from './modules/generalPrisma/generalPrisma.module';
-import { BidasksPrismaModule } from './modules/bidasksPrisma/bidasksPrisma.module';
-import { BidasksStorageModule } from './modules/bidasks-storage/bidasks-storage.module';
+import { OrderbooksPrismaModule } from './modules/orderbooksPrisma/orderbooksPrisma.module';
+import { OrderbooksStorageModule } from './modules/orderbooks-storage/orderbooks-storage.module';
 
 @Module({
   imports: [
     GeneralPrismaModule,
     //KlinesPrismaModule,
-    BidasksPrismaModule,
+    OrderbooksPrismaModule,
     RedisModule.forRoot(
       {
         type: 'single',
@@ -19,9 +18,9 @@ import { BidasksStorageModule } from './modules/bidasks-storage/bidasks-storage.
       },
       'bidasksDb',
     ),
-    BidasksStorageModule,
+    OrderbooksStorageModule,
     EntityModule,
   ],
-  providers: [GrabTradesCommand],
+  providers: [],
 })
 export class CliModule {}

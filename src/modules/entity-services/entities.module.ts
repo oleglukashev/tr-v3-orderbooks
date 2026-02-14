@@ -1,11 +1,10 @@
 import { Global, Module } from '@nestjs/common';
-import { ClustersEntityService } from './clusters-entity-service';
-import { FppEntityService } from './fpp-entity-service';
+import { OrderbooksEntityService } from './orderbooks-entity-service';
 import { PairsEntityService } from './pairs-entity-service';
 
 @Global()
 @Module({
-  providers: [ClustersEntityService, FppEntityService, PairsEntityService],
-  exports: [ClustersEntityService, FppEntityService, PairsEntityService],
+  providers: [OrderbooksEntityService, PairsEntityService],
+  exports: [OrderbooksEntityService, PairsEntityService],
 })
 export class EntityModule {}

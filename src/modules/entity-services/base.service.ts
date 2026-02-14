@@ -8,7 +8,7 @@ import {
 } from 'prisma';
 import { GeneralPrismaService } from '../generalPrisma/generalPrisma.service';
 //import { KlinesPrismaService } from '../klinesPrisma/klinesPrisma.service';
-import { BidasksPrismaService } from '../bidasksPrisma/bidasksPrisma.service';
+import { OrderbooksPrismaService } from '../orderbooksPrisma/orderbooksPrisma.service';
 
 interface IFind {
   where?: UserWhereInput;
@@ -24,7 +24,7 @@ export class Base {
     prismaService:
       | GeneralPrismaService
       //| KlinesPrismaService
-      | BidasksPrismaService,
+      | OrderbooksPrismaService,
     protected readonly prismaDomain: string,
   ) {
     this.prismaService = prismaService;

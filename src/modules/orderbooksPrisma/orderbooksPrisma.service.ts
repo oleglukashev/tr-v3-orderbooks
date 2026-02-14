@@ -8,11 +8,11 @@ import {
 import { PrismaClient } from '.db/bidasks/generated';
 
 @Injectable()
-export class BidasksPrismaService
+export class OrderbooksPrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  private readonly logger = new Logger(BidasksPrismaService.name);
+  private readonly logger = new Logger(OrderbooksPrismaService.name);
 
   constructor() {
     super({ log: [{ emit: 'event', level: 'query' }] });
