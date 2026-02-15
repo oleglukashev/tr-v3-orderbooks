@@ -49,6 +49,8 @@ export class ApiClustersController {
       ts,
     );
 
+    console.log('res', res);
+
     res.items.push(storageOrderbook);
     return res;
   }
