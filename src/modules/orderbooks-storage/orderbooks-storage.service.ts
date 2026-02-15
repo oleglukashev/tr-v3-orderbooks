@@ -64,17 +64,25 @@ export class OrderbooksStorageService {
     // console.log('tf', tf);
     // if no startTs in orderbooks clear this tf orderbooks and create new cluster
     // if (!this.orderbooks[pairId][tf]?.[startTs]) {
-    let existOrderbook: any = this.getOrderbook(pairId, tf, startTs);
+    // let existOrderbook: any = this.getOrderbook(pairId, tf, startTs);
+    //
+    // if (!existOrderbook) {
+    //   existOrderbook = {
+    //     data: {},
+    //     ts: startTs,
+    //     pairId,
+    //     tf,
+    //     v: 0,
+    //   };
+    // }
 
-    if (!existOrderbook) {
-      existOrderbook = {
-        data: {},
-        ts: startTs,
-        pairId,
-        tf,
-        v: 0,
-      };
-    }
+    const existOrderbook: any = {
+      data: {},
+      ts: startTs,
+      pairId,
+      tf,
+      v: 0,
+    };
 
     for (const bid of orderbook.bids) {
       const price = getPriceOrderbook(orderbook, clusterSize, bid[0]);
