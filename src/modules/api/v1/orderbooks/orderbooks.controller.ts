@@ -49,9 +49,7 @@ export class ApiClustersController {
       ts,
     );
 
-    console.log('res', res);
-
-    res.items.push(storageOrderbook);
+    res.push(storageOrderbook);
     return res;
   }
 
