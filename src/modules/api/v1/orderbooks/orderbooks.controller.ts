@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { OrderbooksEntityService } from '../../../entity-services/orderbooks-entity-service';
 import { OrderbooksStorageService } from '../../../orderbooks-storage/orderbooks-storage.service';
+import { getStartTsByTf, nowTs } from '../../../../utils/time';
 
 @ApiTags('Products')
 @ApiBearerAuth()
@@ -30,7 +31,7 @@ export class ApiClustersController {
     @Query('page', new DefaultValuePipe(false), ParseIntPipe) page,
     @Query('limit', new DefaultValuePipe(false), ParseIntPipe) limit,
   ): Promise<any> {
-    return this.orderbooksEntityService.findMany({
+    const res = await this.orderbooksEntityService.findMany({
       where: {
         pairId,
         tf,
@@ -39,6 +40,17 @@ export class ApiClustersController {
       page,
       take: limit,
     });
+
+    const ts = getStartTsByTf(nowTs(), 5);
+
+    const storageOrderbook = this.orderbooksStorageService.getOrderbook(
+      pairId,
+      tf,
+      ts,
+    );
+
+    res.items.push(storageOrderbook);
+    return res;
   }
 
   @Get('by_pair_id_and_tf_and_ts')
