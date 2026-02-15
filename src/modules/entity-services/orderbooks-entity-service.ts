@@ -38,6 +38,7 @@ export class OrderbooksEntityService extends Base {
     try {
       await this.baseCreate(orderbook);
     } catch (e: any) {
+      console.log('e', e);
       if (e.code === 'P2002') {
         const existOrderbook = await this.findFirst({
           where: {
