@@ -23,7 +23,7 @@ model Orderbook {
   ts   BigInt
   tf   Int    @default(1)
   data Json   @default("{}")
-  v    Int    @default(0)
+  v    BigInt @default(0)
 
   pairId Int @map("pair_id")
 
