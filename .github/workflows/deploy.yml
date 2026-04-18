@@ -1,0 +1,82 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: yarn
+
+      - name: Install Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@stable --activate
+
+      - name: Install dependencies
+        run: YARN_ENABLE_IMMUTABLE_INSTALLS=false yarn install
+
+      - name: Build
+        run: yarn build
+
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    needs: verify
+    environment: production
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            source ~/.profile
+
+            cd "/var/www/tr-v3-orderbook"
+            git fetch origin
+            git checkout "${{ github.ref_name }}"
+            git pull origin "${{ github.ref_name }}"
+
+            yarn -v
+
+            yarn install
+            yarn build
+            yarn migrate:deploy
+            if ! command -v pm2 >/dev/null 2>&1; then
+              echo "pm2 is not installed on server"
+              exit 1
+            fi
+
+            if [ "$(pm2 pid tr_v3_orderbook)" != "0" ]; then
+              echo "Stopping running process tr_v3_orderbook"
+              pm2 stop tr_v3_orderbook
+            else
+              echo "Process tr_v3_orderbook is not running"
+            fi
+
+            if [ "$(pm2 pid tr_v3_orderbook)" = "0" ]; then
+              echo "Starting process tr_v3_orderbook"
+              cd /var/www/tr-v3-orderbook && pm2 start dist/src/main.js --name tr_v3_orderbook -- --tradingServiceId=2
+            else
+              echo "Process tr_v3_orderbook is already running"
+            fi
