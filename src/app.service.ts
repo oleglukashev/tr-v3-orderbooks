@@ -11,6 +11,15 @@ import sleep from './utils/sleep';
 import { WebsocketStreamService } from './modules/websocket-gateway/websocket-stream.service';
 import { nowTs } from './utils/time';
 
+// watchOrderBook depth limit per exchange — several exchanges only accept a fixed set of values
+// (e.g. htx: 5/20/150/400) and throw otherwise. We only keep the top ~60 levels client-side, so a
+// moderate depth is plenty. Unlisted exchanges pass `undefined` → ccxt's own default (always valid).
+const ORDERBOOK_LIMIT_BY_EXCHANGE: Record<string, number> = {
+  htx: 150,
+  bybit: 200,
+  okx: 400,
+};
+
 @Injectable()
 export class AppService {
   constructor(
@@ -150,7 +159,8 @@ export class AppService {
     while (true) {
       try {
         const changedSymbol = pair.symbol.replace('USDT', '/USDT:USDT');
-        const data = await exchange.watchOrderBook(changedSymbol, 1000);
+        const limit = ORDERBOOK_LIMIT_BY_EXCHANGE[exchange.id];
+        const data = await exchange.watchOrderBook(changedSymbol, limit);
         const now = nowTs();
 
         // Accept data every 5 sec only
