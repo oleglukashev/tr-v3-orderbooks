@@ -108,10 +108,10 @@ export class AppService {
       return;
     }
 
+    // Public market data only — no API keys. A single global key can't be valid for all 8
+    // exchanges (mexc rejects it with "Api key info invalid"), and order books need no auth.
     const exchange = new ccxtProClass({
       enableRateLimit: true,
-      apiKey: process.env.API_KEY,
-      secret: process.env.API_SECRET,
       options: {
         defaultType: 'linear', // Устанавливаем тип рынка на фьючерсный
         // Skip local order-book checksum (okx & co. throw on drift). We only need top-N depth
