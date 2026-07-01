@@ -43,6 +43,11 @@ const SUBSCRIBE_DELAY_MS_BY_EXCHANGE: Record<string, number> = {
   gate: 300,
 };
 const DEFAULT_SUBSCRIBE_DELAY_MS = 200;
+// Exchanges whose USDT-perp markets live in a different ccxt class than the spot one.
+// (kucoin spot markets have no "BTC/USDT:USDT" → everything gets skipped; kucoinfutures has them.)
+const CCXT_FUTURES_ID: Record<string, string> = {
+  kucoin: 'kucoinfutures',
+};
 // Rate-limit / flood errors → back off longer before reconnecting (and don't spam the bot).
 const RATE_LIMIT_RE = /too frequent|too many|rate ?limit|frequently|\b429\b|\b510\b/i;
 
@@ -113,9 +118,10 @@ export class AppService {
   }
 
   private async initExchange({ name, id }: { name: string; id: number }) {
-    const ccxtProClass = ccxt.pro[name];
+    const ccxtId = CCXT_FUTURES_ID[name] ?? name;
+    const ccxtProClass = ccxt.pro[ccxtId];
     if (!ccxtProClass) {
-      console.error(`[orderbook] no ccxt.pro exchange "${name}"`);
+      console.error(`[orderbook] no ccxt.pro exchange "${ccxtId}"`);
       return;
     }
 
