@@ -24,6 +24,8 @@ const ORDERBOOK_LIMIT_CANDIDATES: Record<string, Array<number | undefined>> = {
   bingx: [100, 50, 20],
   kucoin: [undefined],
   bitget: [undefined],
+  // htx ccxt id has been both "htx" and "huobi" across versions — cover both.
+  huobi: [150, 20, 5],
 };
 // For exchanges not listed above, try the ccxt default first, then progressively smaller levels.
 const DEFAULT_LIMIT_CANDIDATES: Array<number | undefined> = [undefined, 100, 50, 20, 5];
