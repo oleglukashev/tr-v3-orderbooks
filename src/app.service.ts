@@ -36,49 +36,57 @@ export class AppService {
     this.orderbooksStream();
   }
 
-  // Which trading services to collect orderbooks for:
-  //   ORDERBOOK_TRADING_SERVICES="1,2,3"  → that explicit list
-  //   --tradingServiceId=2                → just that one (backward compatible)
-  //   otherwise                          → every service present in config.json
-  // Running them in one process keeps a single aggregated depth store (and thus one WS snapshot
-  // with every exchange) instead of fragmenting it across per-exchange processes.
-  private resolveTradingServiceIds(argv: any): string[] {
+  // config (configs/base.json style, shared with tr-v3-klines-client):
+  //   tradingServices: { name: id }  — exchanges we can run + their trading_service id
+  //   names:           [ "BTCUSDT", ... ]  — the pair set to collect
+  // Which exchanges to actually run (by name):
+  //   ORDERBOOK_TRADING_SERVICES="bybit,mexc" (names or ids) → that subset
+  //   --tradingServiceId=2                                   → just that one
+  //   otherwise                                              → every exchange in tradingServices
+  // Running them in one process keeps a single aggregated depth store (one WS with every exchange).
+  private resolveServices(argv: any): Array<{ name: string; id: number }> {
+    const map: Record<string, number> = (config as any).tradingServices || {};
+    const all = Object.entries(map).map(([name, id]) => ({
+      name,
+      id: Number(id),
+    }));
     const fromEnv = process.env.ORDERBOOK_TRADING_SERVICES;
     if (fromEnv) {
-      return fromEnv
+      const wanted = fromEnv
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+      return all.filter(
+        (s) => wanted.includes(s.name) || wanted.includes(String(s.id)),
+      );
     }
     if (argv['tradingServiceId'] != null) {
-      return [String(argv['tradingServiceId'])];
+      const id = Number(argv['tradingServiceId']);
+      return all.filter((s) => s.id === id);
     }
-    return Object.keys(config);
+    return all;
   }
 
   private async initTradesProcess() {
     const argv: any = yargs.argv;
-    const ids = this.resolveTradingServiceIds(argv);
-    console.log(`[orderbook] collecting for trading services: ${ids.join(', ')}`);
+    const services = this.resolveServices(argv);
+    console.log(
+      `[orderbook] collecting for: ${services
+        .map((s) => `${s.name}(${s.id})`)
+        .join(', ')}`,
+    );
     // Each exchange runs independently; one failing to connect must not stop the others.
-    for (const id of ids) {
-      this.initExchange(String(id)).catch((err) =>
-        console.error(`[orderbook] TS=${id} init failed: ${err.message}`),
+    for (const service of services) {
+      this.initExchange(service).catch((err) =>
+        console.error(`[orderbook] ${service.name} init failed: ${err.message}`),
       );
     }
   }
 
-  private async initExchange(tradingServiceId: string) {
-    const tradingServiceData = config[tradingServiceId];
-    if (!tradingServiceData) {
-      console.error(`[orderbook] no config entry for TS=${tradingServiceId}`);
-      return;
-    }
-    const ccxtProClass = ccxt.pro[tradingServiceData.name];
+  private async initExchange({ name, id }: { name: string; id: number }) {
+    const ccxtProClass = ccxt.pro[name];
     if (!ccxtProClass) {
-      console.error(
-        `[orderbook] TS=${tradingServiceId}: no ccxt.pro exchange "${tradingServiceData.name}"`,
-      );
+      console.error(`[orderbook] no ccxt.pro exchange "${name}"`);
       return;
     }
 
@@ -91,13 +99,15 @@ export class AppService {
       },
     });
 
-    // Only this exchange's own pairs (pairId is unique per trading service). Without the
-    // tradingServiceId filter every process would try to watch all services' pairs on one exchange.
+    // This exchange's own pairs (pairId is unique per trading service), restricted to the
+    // config `names` list so the collected set matches tr-v3-klines-client.
+    const names: string[] = (config as any).names || [];
     const pairsForbidasks = await this.pairsEntityService.findMany({
       where: {
         activated: true,
         isUsedToBidasks: true,
-        tradingServiceId: Number(tradingServiceId),
+        tradingServiceId: id,
+        ...(names.length ? { name: { in: names } } : {}),
       },
     });
 
@@ -119,7 +129,7 @@ export class AppService {
     }
 
     console.log(
-      `[orderbook] TS=${tradingServiceId} (${tradingServiceData.name}): watching ${watched}/${pairsForbidasks.length} pairs` +
+      `[orderbook] ${name}(${id}): watching ${watched}/${pairsForbidasks.length} pairs` +
         (skipped.length ? `, skipped: ${skipped.join(', ')}` : ''),
     );
   }

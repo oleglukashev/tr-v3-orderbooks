@@ -1,227 +1,54 @@
 {
-  "1": { "name": "mexc" },
-  "3": { "name": "gate" },
-  "4": { "name": "okx" },
-  "5": { "name": "kucoin" },
-  "6": { "name": "bitget" },
-  "7": { "name": "htx" },
-  "8": { "name": "bingx" },
-  "2": {
-    "name": "bybit",
-    "types": {
-      "spot": {
-        "name": "spot",
-        "tickers": {
-          "49": {
-            "symbol": "KAS/USDT",
-            "tickerAnswerSymbol": "KAS/USDT"
-          },
-          "50": {
-            "symbol": "BTC/USDT",
-            "tickerAnswerSymbol": "BTC/USDT"
-          },
-          "51": {
-            "symbol": "ETH/USDT",
-            "tickerAnswerSymbol": "ETH/USDT"
-          },
-          "52": {
-            "symbol": "LINK/USDT",
-            "tickerAnswerSymbol": "LINK/USDT"
-          },
-          "53": {
-            "symbol": "PYTH/USDT",
-            "tickerAnswerSymbol": "PYTH/USDT"
-          },
-          "54": {
-            "symbol": "SOL/USDT",
-            "tickerAnswerSymbol": "SOL/USDT"
-          },
-          "55": {
-            "symbol": "AVAX/USDT",
-            "tickerAnswerSymbol": "AVAX/USDT"
-          },
-          "56": {
-            "symbol": "ADA/USDT",
-            "tickerAnswerSymbol": "ADA/USDT"
-          },
-          "57": {
-            "symbol": "TON/USDT",
-            "tickerAnswerSymbol": "TON/USDT"
-          },
-          "58": {
-            "symbol": "XLM/USDT",
-            "tickerAnswerSymbol": "XLM/USDT"
-          },
-          "59": {
-            "symbol": "DOT/USDT",
-            "tickerAnswerSymbol": "DOT/USDT"
-          },
-          "60": {
-            "symbol": "TRX/USDT",
-            "tickerAnswerSymbol": "TRX/USDT"
-          }
-        }
-      },
-      "future": {
-        "name": "linear",
-        "tickers": {
-          "49": {
-            "symbol": "KASUSDT",
-            "tickerAnswerSymbol": "KAS/USDT:USDT",
-            "clusterPrecision": {
-              "5": 0.00001,
-              "15": 0.00001,
-              "30": 0.00001,
-              "60": 0.00001,
-              "240": 0.00002,
-              "1440": 0.00002
-            }
-          },
-          "50": {
-            "symbol": "BTCUSDT",
-            "tickerAnswerSymbol": "BTC/USDT:USDT",
-            "clusterPrecision": {
-              "1": 10,
-              "5": 10,
-              "15": 10,
-              "30": 20,
-              "60": 20,
-              "240": 20,
-              "1440": 100
-            }
-          },
-          "51": {
-            "symbol": "ETHUSDT",
-            "tickerAnswerSymbol": "ETH/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.1,
-              "5": 0.1,
-              "15": 0.1,
-              "30": 0.2,
-              "60": 0.2,
-              "240": 0.2,
-              "1440": 1
-            }
-          },
-          "52": {
-            "symbol": "LINKUSDT",
-            "tickerAnswerSymbol": "LINK/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.002,
-              "5": 0.002,
-              "15": 0.002,
-              "30": 0.004,
-              "60": 0.004,
-              "240": 0.004,
-              "1440": 0.02
-            }
-          },
-          "53": {
-            "symbol": "PYTHUSDT",
-            "tickerAnswerSymbol": "PYTH/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.0001,
-              "5": 0.0001,
-              "15": 0.0001,
-              "30": 0.0001,
-              "60": 0.0001,
-              "240": 0.0001,
-              "1440": 0.0005
-            }
-          },
-          "54": {
-            "symbol": "SOLUSDT",
-            "tickerAnswerSymbol": "SOL/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.02,
-              "5": 0.02,
-              "15": 0.02,
-              "30": 0.04,
-              "60": 0.04,
-              "240": 0.04,
-              "1440": 0.2
-            }
-          },
-          "55": {
-            "symbol": "AVAXUSDT",
-            "tickerAnswerSymbol": "AVAX/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.005,
-              "5": 0.005,
-              "15": 0.005,
-              "30": 0.01,
-              "60": 0.01,
-              "240": 0.01,
-              "1440": 0.05
-            }
-          },
-          "56": {
-            "symbol": "ADAUSDT",
-            "tickerAnswerSymbol": "ADA/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.0001,
-              "5": 0.0001,
-              "15": 0.0001,
-              "30": 0.0002,
-              "60": 0.0002,
-              "240": 0.0002,
-              "1440": 0.001
-            }
-          },
-          "57": {
-            "symbol": "TONUSDT",
-            "tickerAnswerSymbol": "TON/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.001,
-              "5": 0.001,
-              "15": 0.001,
-              "30": 0.002,
-              "60": 0.002,
-              "240": 0.002,
-              "1440": 0.01
-            }
-          },
-          "58": {
-            "symbol": "XLMUSDT",
-            "tickerAnswerSymbol": "XLM/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.00002,
-              "5": 0.00002,
-              "15": 0.00002,
-              "30": 0.0004,
-              "60": 0.0004,
-              "240": 0.0004,
-              "1440": 0.0002
-            }
-          },
-          "59": {
-            "symbol": "DOTUSDT",
-            "tickerAnswerSymbol": "DOT/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.001,
-              "5": 0.001,
-              "15": 0.001,
-              "30": 0.002,
-              "60": 0.002,
-              "240": 0.002,
-              "1440": 0.01
-            }
-          },
-          "60": {
-            "symbol": "TRXUSDT",
-            "tickerAnswerSymbol": "TRX/USDT:USDT",
-            "clusterPrecision": {
-              "1": 0.001,
-              "5": 0.001,
-              "15": 0.001,
-              "30": 0.002,
-              "60": 0.002,
-              "240": 0.002,
-              "1440": 0.01
-            }
-          }
-        }
-      }
-    },
-  }
+  "tradingServices": {
+    "mexc": 1,
+    "bybit": 2,
+    "gate": 3,
+    "okx": 4,
+    "kucoin": 5,
+    "bitget": 6,
+    "htx": 7,
+    "bingx": 8
+  },
+  "names": [
+    "AAVEUSDT",
+    "ADAUSDT",
+    "APTUSDT",
+    "ASTERUSDT",
+    "AVAXUSDT",
+    "BNBUSDT",
+    "BTCUSDT",
+    "CCUSDT",
+    "CROUSDT",
+    "DASHUSDT",
+    "DOGEUSDT",
+    "DOTUSDT",
+    "ENAUSDT",
+    "ETCUSDT",
+    "ETHUSDT",
+    "GRAMUSDT",
+    "HBARUSDT",
+    "HYPEUSDT",
+    "ICPUSDT",
+    "KASUSDT",
+    "LINKUSDT",
+    "LTCUSDT",
+    "MNTUSDT",
+    "NEARUSDT",
+    "OKBUSDT",
+    "ONDOUSDT",
+    "POLUSDT",
+    "PYTHUSDT",
+    "SKYUSDT",
+    "SOLUSDT",
+    "STRKUSDT",
+    "SUIUSDT",
+    "TAOUSDT",
+    "TRXUSDT",
+    "UNIUSDT",
+    "WLDUSDT",
+    "XLMUSDT",
+    "XMRUSDT",
+    "XRPUSDT",
+    "ZECUSDT"
+  ]
 }
