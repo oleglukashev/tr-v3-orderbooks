@@ -35,6 +35,17 @@ const DEFAULT_LIMIT_CANDIDATES: Array<number | undefined> = [undefined, 100, 50,
 const LEVEL_ERROR_RE =
   /accepts limits of|level not supported|provided level|not supported:\s*\d|invalid (?:depth|limit)/i;
 
+// Gap between starting each pair's subscription, to respect per-exchange WS rate limits (mexc is
+// strict: code 510 "Requests are too frequent"). Overridable per exchange.
+const SUBSCRIBE_DELAY_MS_BY_EXCHANGE: Record<string, number> = {
+  mexc: 500,
+  bitget: 300,
+  gate: 300,
+};
+const DEFAULT_SUBSCRIBE_DELAY_MS = 200;
+// Rate-limit / flood errors → back off longer before reconnecting (and don't spam the bot).
+const RATE_LIMIT_RE = /too frequent|too many|rate ?limit|frequently|\b429\b|\b510\b/i;
+
 @Injectable()
 export class AppService {
   // Current depth-candidate index per exchange id (advanced when a level is rejected).
@@ -134,6 +145,8 @@ export class AppService {
 
     await exchange.loadMarkets();
 
+    const subscribeDelay =
+      SUBSCRIBE_DELAY_MS_BY_EXCHANGE[name] ?? DEFAULT_SUBSCRIBE_DELAY_MS;
     const times = {};
     let watched = 0;
     const skipped: string[] = [];
@@ -147,6 +160,8 @@ export class AppService {
       times[pair.id] = nowTs();
       this.watchOrderbookProcess({ exchange, pair, times });
       watched++;
+      // Stagger initial subscriptions so we don't trip the exchange's WS rate limit.
+      await sleep(subscribeDelay);
     }
 
     console.log(
@@ -243,12 +258,18 @@ export class AppService {
           );
           continue;
         }
+        // Rate-limit / flood → back off longer and stay quiet (transient, self-resolving).
+        const rateLimited = RATE_LIMIT_RE.test(error.message || '');
         console.error('Orderbook WebSocket connection error:', error.message);
-        console.log('Reconnecting in 1 second...');
-        await sentToBot(
-          `orderbook microservice: ${pair.symbol} - ${error.message}`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (rateLimited) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+        } else {
+          console.log('Reconnecting in 1 second...');
+          await sentToBot(
+            `orderbook microservice: ${pair.symbol} - ${error.message}`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
       }
     }
   }
