@@ -11,17 +11,33 @@ import sleep from './utils/sleep';
 import { WebsocketStreamService } from './modules/websocket-gateway/websocket-stream.service';
 import { nowTs } from './utils/time';
 
-// watchOrderBook depth limit per exchange — several exchanges only accept a fixed set of values
-// (e.g. htx: 5/20/150/400) and throw otherwise. We only keep the top ~60 levels client-side, so a
-// moderate depth is plenty. Unlisted exchanges pass `undefined` → ccxt's own default (always valid).
-const ORDERBOOK_LIMIT_BY_EXCHANGE: Record<string, number> = {
-  htx: 150,
-  bybit: 200,
-  okx: 400,
+// watchOrderBook depth limit per exchange — exchanges only accept a fixed set of levels and throw
+// otherwise (htx: 5/20/150/400; gate order_book_update: 20/50/100; okx books: 400; …). We keep the
+// top ~60 levels client-side, so a moderate depth is plenty. These are ordered candidates: on a
+// "level not supported" error we downgrade to the next one and retry (self-healing).
+const ORDERBOOK_LIMIT_CANDIDATES: Record<string, Array<number | undefined>> = {
+  bybit: [200, 50],
+  okx: [400, 50, 5],
+  htx: [150, 20, 5],
+  gate: [100, 50, 20],
+  mexc: [20, 10, 5],
+  bingx: [100, 50, 20],
+  kucoin: [undefined],
+  bitget: [undefined],
 };
+// For exchanges not listed above, try the ccxt default first, then progressively smaller levels.
+const DEFAULT_LIMIT_CANDIDATES: Array<number | undefined> = [undefined, 100, 50, 20, 5];
+// A watchOrderBook error meaning "this depth level is invalid" — match the specific exchange
+// phrasings (htx "accepts limits of …", gate "provided level not supported: N") without catching
+// unrelated errors like rate limits.
+const LEVEL_ERROR_RE =
+  /accepts limits of|level not supported|provided level|not supported:\s*\d|invalid (?:depth|limit)/i;
 
 @Injectable()
 export class AppService {
+  // Current depth-candidate index per exchange id (advanced when a level is rejected).
+  private readonly obLimitIndex = new Map<string, number>();
+
   constructor(
     private readonly pairsEntityService: PairsEntityService,
     private readonly orderbooksStorageService: OrderbooksStorageService,
@@ -169,10 +185,18 @@ export class AppService {
   // }
 
   private async watchOrderbookProcess({ exchange, pair, times }: any) {
+    const candidates =
+      ORDERBOOK_LIMIT_CANDIDATES[exchange.id] || DEFAULT_LIMIT_CANDIDATES;
     while (true) {
+      // Read the (possibly downgraded) level each iteration so a rejection on one pair
+      // propagates to all pairs of this exchange.
+      const idx = Math.min(
+        this.obLimitIndex.get(exchange.id) ?? 0,
+        candidates.length - 1,
+      );
+      const limit = candidates[idx];
       try {
         const changedSymbol = pair.symbol.replace('USDT', '/USDT:USDT');
-        const limit = ORDERBOOK_LIMIT_BY_EXCHANGE[exchange.id];
         const data = await exchange.watchOrderBook(changedSymbol, limit);
         const now = nowTs();
 
@@ -205,6 +229,18 @@ export class AppService {
           }
         }
       } catch (error: any) {
+        // If the exchange rejected the depth level, downgrade to the next candidate and retry
+        // (quietly — don't spam the bot for a self-healing config issue).
+        if (
+          LEVEL_ERROR_RE.test(error.message || '') &&
+          idx < candidates.length - 1
+        ) {
+          this.obLimitIndex.set(exchange.id, idx + 1);
+          console.warn(
+            `[orderbook] ${exchange.id}: depth level ${limit} rejected, downgrading to ${candidates[idx + 1]}`,
+          );
+          continue;
+        }
         console.error('Orderbook WebSocket connection error:', error.message);
         console.log('Reconnecting in 1 second...');
         await sentToBot(
