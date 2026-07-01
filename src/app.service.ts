@@ -96,6 +96,9 @@ export class AppService {
       secret: process.env.API_SECRET,
       options: {
         defaultType: 'linear', // Устанавливаем тип рынка на фьючерсный
+        // Skip local order-book checksum (okx & co. throw on drift). We only need top-N depth
+        // refreshed every 5s, so an occasional out-of-sync tick is fine and avoids reconnect churn.
+        watchOrderBook: { checksum: false },
       },
     });
 
