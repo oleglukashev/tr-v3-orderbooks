@@ -6,7 +6,8 @@ import { ApiClustersModule } from './modules/api/v1/orderbooks/orderbooks.module
 //import { GenerateFppModule } from './modules/generate-fpp/generate-fpp.module';
 import { ScheduleModule } from '@nestjs/schedule';
 //import { RedisModule } from '@nestjs-modules/ioredis';
-import { MoveOrderbooksFromStorageToBdModule } from './modules/move-orderbooks-from-storage-to-bd/move-orderbooks-from-storage-to-bd.module';
+// Temporarily disabled — not persisting cluster orderbooks to the DB for now.
+// import { MoveOrderbooksFromStorageToBdModule } from './modules/move-orderbooks-from-storage-to-bd/move-orderbooks-from-storage-to-bd.module';
 import { GeneralPrismaModule } from './modules/generalPrisma/generalPrisma.module';
 import { OrderbooksPrismaModule } from './modules/orderbooksPrisma/orderbooksPrisma.module';
 // import { BullBoardModule } from '@bull-board/nestjs';
@@ -54,7 +55,9 @@ import { ApiStoragesModule } from './modules/api/v1/storages/storages.module';
     //GenerateFppModule,
     OrderbooksStorageModule,
     DepthStorageModule,
-    MoveOrderbooksFromStorageToBdModule,
+    // Temporarily disabled — do not persist cluster orderbooks to the DB for now
+    // (the every-minute cron hit P2002 unique-constraint dupes on ts/tf/pair_id).
+    // MoveOrderbooksFromStorageToBdModule,
     ApiClustersModule,
     ApiStoragesModule,
     WebsocketGatewayModule,
