@@ -230,27 +230,10 @@ export class AppService {
 
         times[pair.id] = now;
 
-        // Phase 1: keep the latest raw L2 book for executable-liquidity / slippage sizing.
-        // Independent of clusterPrecision so it works for every watched pair.
+        // Keep only the latest raw L2 book for executable-liquidity / slippage sizing.
+        // The cluster/footprint store is intentionally not populated anymore (its move-to-DB
+        // cron is disabled), so we avoid an unbounded in-memory cluster store.
         this.depthStorageService.setDepth(pair.id, data.bids, data.asks, now);
-
-        if (pair.clusterPrecision) {
-          for (const tfAsString in pair.clusterPrecision) {
-            const tf = parseInt(tfAsString);
-            if (tf !== 5) {
-              continue;
-            }
-
-            const clusterSize = pair.clusterPrecision[tfAsString];
-            //console.log('data', data);
-            this.orderbooksStorageService.processOrderbook(
-              data,
-              5,
-              pair.id,
-              clusterSize,
-            );
-          }
-        }
       } catch (error: any) {
         // If the exchange rejected the depth level, downgrade to the next candidate and retry
         // (quietly — don't spam the bot for a self-healing config issue).
