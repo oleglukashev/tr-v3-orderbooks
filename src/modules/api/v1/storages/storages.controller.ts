@@ -21,10 +21,10 @@ export class ApiStoragesController {
   @Get('depth')
   @ApiOkResponse({
     description:
-      'Executable-liquidity profiles per pairId (best bid/ask + cumulative base/notional per slippage band).',
+      'Raw top-N order books per pairId ({ bids, asks }) for effective-price / VWAP sizing.',
   })
   @HttpCode(HttpStatus.OK)
   getDepth(): any {
-    return this.depthStorageService.getProfiles();
+    return this.depthStorageService.getBooks();
   }
 }

@@ -203,7 +203,7 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
   //   }
   // }
 
-  /** Send the full executable-liquidity snapshot ({ [pairId]: DepthProfile }) to one client. */
+  /** Send the full raw top-N order books ({ [pairId]: { bids, asks } }) to one client. */
   private sendDepthSnapshot(ws: WebSocket): void {
     if (ws.readyState !== WebSocket.OPEN) {
       return;
@@ -212,7 +212,7 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
       JSON.stringify({
         type: 'depthSnapshot',
         updatedAt: Date.now(),
-        data: this.depthStorage.getProfiles(),
+        data: this.depthStorage.getBooks(),
       }),
     );
   }
@@ -225,7 +225,7 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
     const message = JSON.stringify({
       type: 'depthSnapshot',
       updatedAt: Date.now(),
-      data: this.depthStorage.getProfiles(),
+      data: this.depthStorage.getBooks(),
     });
     for (const { ws } of this.depthSnapshotSubscriptions.values()) {
       if (ws.readyState === WebSocket.OPEN) {
