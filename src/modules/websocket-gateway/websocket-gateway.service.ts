@@ -10,12 +10,18 @@ import {
   OrderbookStreamPayload,
   WebsocketStreamService,
 } from './websocket-stream.service';
+import { DepthStorageService } from '../depth-storage/depth-storage.service';
 
 type WsOrderbookSubscription = {
   ws: WebSocket;
   tf: number;
   pairId: number;
 };
+
+type WsDepthSubscription = { ws: WebSocket };
+
+// How often the full executable-liquidity snapshot is pushed to subscribers.
+const DEPTH_SNAPSHOT_INTERVAL_MS = 3000;
 
 @Injectable()
 export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
@@ -32,10 +38,19 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
     string,
     WsOrderbookSubscription
   >();
+  // Clients (arbitrage page) that want the whole executable-liquidity snapshot at once.
+  private readonly depthSnapshotSubscriptions = new Map<
+    string,
+    WsDepthSubscription
+  >();
+  private depthSnapshotTimer?: ReturnType<typeof setInterval>;
   private wss?: WebSocketServer;
   private unsubscribeOrderbooks?: () => void;
 
-  constructor(private readonly websocketStream: WebsocketStreamService) {}
+  constructor(
+    private readonly websocketStream: WebsocketStreamService,
+    private readonly depthStorage: DepthStorageService,
+  ) {}
 
   onModuleInit() {
     const port = Number(process.env.WS_PORT);
@@ -50,11 +65,19 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
       this.broadcastOrderbooks(payload),
     );
 
+    this.depthSnapshotTimer = setInterval(
+      () => this.broadcastDepthSnapshot(),
+      DEPTH_SNAPSHOT_INTERVAL_MS,
+    );
+
     this.logger.log(`WebSocket server listening on ws://localhost:${port}`);
   }
 
   onModuleDestroy() {
     this.unsubscribeOrderbooks?.();
+    if (this.depthSnapshotTimer) {
+      clearInterval(this.depthSnapshotTimer);
+    }
     this.wss?.close();
   }
 
@@ -73,6 +96,9 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
       } catch (e) {}
       try {
         this.orderbookSubscriptionsByPairIdAndTf.delete(connectionId);
+      } catch (e) {}
+      try {
+        this.depthSnapshotSubscriptions.delete(connectionId);
       } catch (e) {}
       this.logger.log(`Client disconnected: ${connectionId}`);
     });
@@ -119,6 +145,11 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(
           `Client subscribed to bidask: ${data.pairId} @ ${data.tf}`,
         );
+      } else if (data.type === 'subscribeAllDepth') {
+        // Whole executable-liquidity snapshot at once: immediately + every interval.
+        const connectionId = (ws as any).id;
+        this.depthSnapshotSubscriptions.set(connectionId, { ws });
+        this.sendDepthSnapshot(ws);
       }
     } catch (error) {
       this.logger.error('Failed to parse WebSocket message.', error as Error);
@@ -171,6 +202,37 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
   //     }
   //   }
   // }
+
+  /** Send the full executable-liquidity snapshot ({ [pairId]: DepthProfile }) to one client. */
+  private sendDepthSnapshot(ws: WebSocket): void {
+    if (ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    ws.send(
+      JSON.stringify({
+        type: 'depthSnapshot',
+        updatedAt: Date.now(),
+        data: this.depthStorage.getProfiles(),
+      }),
+    );
+  }
+
+  /** Broadcast the full liquidity snapshot to every subscriber. */
+  private broadcastDepthSnapshot(): void {
+    if (this.depthSnapshotSubscriptions.size === 0) {
+      return;
+    }
+    const message = JSON.stringify({
+      type: 'depthSnapshot',
+      updatedAt: Date.now(),
+      data: this.depthStorage.getProfiles(),
+    });
+    for (const { ws } of this.depthSnapshotSubscriptions.values()) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(message);
+      }
+    }
+  }
 
   private broadcastOrderbooks(orderbooks: OrderbookStreamPayload[]) {
     if (this.orderbookSubscriptions.size > 0) {

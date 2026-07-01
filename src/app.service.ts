@@ -6,6 +6,7 @@ import * as process from 'node:process';
 import sentToBot from './utils/bot';
 import { PairsEntityService } from './modules/entity-services/pairs-entity-service';
 import { OrderbooksStorageService } from './modules/orderbooks-storage/orderbooks-storage.service';
+import { DepthStorageService } from './modules/depth-storage/depth-storage.service';
 import sleep from './utils/sleep';
 import { WebsocketStreamService } from './modules/websocket-gateway/websocket-stream.service';
 import { nowTs } from './utils/time';
@@ -15,6 +16,7 @@ export class AppService {
   constructor(
     private readonly pairsEntityService: PairsEntityService,
     private readonly orderbooksStorageService: OrderbooksStorageService,
+    private readonly depthStorageService: DepthStorageService,
     private readonly websocketStreamService: WebsocketStreamService,
   ) {}
 
@@ -25,17 +27,52 @@ export class AppService {
     this.orderbooksStream();
   }
 
+  // Which trading services to collect orderbooks for:
+  //   ORDERBOOK_TRADING_SERVICES="1,2,3"  → that explicit list
+  //   --tradingServiceId=2                → just that one (backward compatible)
+  //   otherwise                          → every service present in config.json
+  // Running them in one process keeps a single aggregated depth store (and thus one WS snapshot
+  // with every exchange) instead of fragmenting it across per-exchange processes.
+  private resolveTradingServiceIds(argv: any): string[] {
+    const fromEnv = process.env.ORDERBOOK_TRADING_SERVICES;
+    if (fromEnv) {
+      return fromEnv
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    if (argv['tradingServiceId'] != null) {
+      return [String(argv['tradingServiceId'])];
+    }
+    return Object.keys(config);
+  }
+
   private async initTradesProcess() {
     const argv: any = yargs.argv;
-    const tradingServiceId: string = argv['tradingServiceId'];
-    const tradingServiceData = config[tradingServiceId];
-    const ccxtProClass = ccxt.pro[tradingServiceData.name];
+    const ids = this.resolveTradingServiceIds(argv);
+    console.log(`[orderbook] collecting for trading services: ${ids.join(', ')}`);
+    // Each exchange runs independently; one failing to connect must not stop the others.
+    for (const id of ids) {
+      this.initExchange(String(id)).catch((err) =>
+        console.error(`[orderbook] TS=${id} init failed: ${err.message}`),
+      );
+    }
+  }
 
+  private async initExchange(tradingServiceId: string) {
+    const tradingServiceData = config[tradingServiceId];
+    if (!tradingServiceData) {
+      console.error(`[orderbook] no config entry for TS=${tradingServiceId}`);
+      return;
+    }
+    const ccxtProClass = ccxt.pro[tradingServiceData.name];
     if (!ccxtProClass) {
-      throw new Error(`No exchnage ${argv.exchange} in ccxt pro`);
+      console.error(
+        `[orderbook] TS=${tradingServiceId}: no ccxt.pro exchange "${tradingServiceData.name}"`,
+      );
+      return;
     }
 
-    //for (const type in tradingServiceData.types) {
     const exchange = new ccxtProClass({
       enableRateLimit: true,
       apiKey: process.env.API_KEY,
@@ -45,27 +82,37 @@ export class AppService {
       },
     });
 
+    // Only this exchange's own pairs (pairId is unique per trading service). Without the
+    // tradingServiceId filter every process would try to watch all services' pairs on one exchange.
     const pairsForbidasks = await this.pairsEntityService.findMany({
       where: {
         activated: true,
         isUsedToBidasks: true,
+        tradingServiceId: Number(tradingServiceId),
       },
     });
 
     await exchange.loadMarkets();
 
-    //const symbols = pairsForbidasks.map((pair: any) => pair.symbol);
-
     const times = {};
-
+    let watched = 0;
+    const skipped: string[] = [];
     for (const pair of pairsForbidasks) {
+      // Skip pairs the exchange doesn't list, so we don't spin a forever-failing watch loop.
+      const changedSymbol = pair.symbol.replace('USDT', '/USDT:USDT');
+      if (exchange.markets && !exchange.markets[changedSymbol]) {
+        skipped.push(pair.symbol);
+        continue;
+      }
       times[pair.id] = nowTs();
       this.watchOrderbookProcess({ exchange, pair, times });
+      watched++;
     }
 
-    // if (symbols.length > 0) {
-    //   this.watchOrderbookProcess({ exchange, symbols });
-    // }
+    console.log(
+      `[orderbook] TS=${tradingServiceId} (${tradingServiceData.name}): watching ${watched}/${pairsForbidasks.length} pairs` +
+        (skipped.length ? `, skipped: ${skipped.join(', ')}` : ''),
+    );
   }
 
   // private async watchTradesProcess({ exchange, pair }: any) {
@@ -112,6 +159,10 @@ export class AppService {
         }
 
         times[pair.id] = now;
+
+        // Phase 1: keep the latest raw L2 book for executable-liquidity / slippage sizing.
+        // Independent of clusterPrecision so it works for every watched pair.
+        this.depthStorageService.setDepth(pair.id, data.bids, data.asks, now);
 
         if (pair.clusterPrecision) {
           for (const tfAsString in pair.clusterPrecision) {

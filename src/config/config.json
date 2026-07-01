@@ -1,4 +1,11 @@
 {
+  "1": { "name": "mexc" },
+  "3": { "name": "gate" },
+  "4": { "name": "okx" },
+  "5": { "name": "kucoin" },
+  "6": { "name": "bitget" },
+  "7": { "name": "htx" },
+  "8": { "name": "bingx" },
   "2": {
     "name": "bybit",
     "types": {

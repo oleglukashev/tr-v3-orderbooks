@@ -14,6 +14,7 @@ import { OrderbooksPrismaModule } from './modules/orderbooksPrisma/orderbooksPri
 // import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 // import { BullModule } from '@nestjs/bullmq';
 import { OrderbooksStorageModule } from './modules/orderbooks-storage/orderbooks-storage.module';
+import { DepthStorageModule } from './modules/depth-storage/depth-storage.module';
 import { WebsocketGatewayModule } from './modules/websocket-gateway/websocket-gateway.module';
 import { ApiStoragesModule } from './modules/api/v1/storages/storages.module';
 
@@ -52,6 +53,7 @@ import { ApiStoragesModule } from './modules/api/v1/storages/storages.module';
     EntityModule,
     //GenerateFppModule,
     OrderbooksStorageModule,
+    DepthStorageModule,
     MoveOrderbooksFromStorageToBdModule,
     ApiClustersModule,
     ApiStoragesModule,
