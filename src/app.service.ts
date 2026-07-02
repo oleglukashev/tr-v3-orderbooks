@@ -66,7 +66,10 @@ export class AppService {
   //times: any = {};
 
   async init(): Promise<any> {
-    await this.initTradesProcess();
+    // Collection moved to tr-v3-orderbook-client, which pushes raw books over WS
+    // (subscribeOrderbookClients / { type: 'orderbook', data }). The server no longer connects to
+    // exchanges itself. Re-enable initTradesProcess() only for standalone/legacy collection.
+    // await this.initTradesProcess();
     this.orderbooksStream();
   }
 

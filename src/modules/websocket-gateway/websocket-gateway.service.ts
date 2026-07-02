@@ -43,6 +43,8 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
     string,
     WsDepthSubscription
   >();
+  // Upstream pushers (tr-v3-orderbook-client) allowed to send { type: 'orderbook', data }.
+  private readonly orderbookClientSubscriptions = new Set<string>();
   private depthSnapshotTimer?: ReturnType<typeof setInterval>;
   private wss?: WebSocketServer;
   private unsubscribeOrderbooks?: () => void;
@@ -100,6 +102,9 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
       try {
         this.depthSnapshotSubscriptions.delete(connectionId);
       } catch (e) {}
+      try {
+        this.orderbookClientSubscriptions.delete(connectionId);
+      } catch (e) {}
       this.logger.log(`Client disconnected: ${connectionId}`);
     });
   }
@@ -150,10 +155,41 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
         const connectionId = (ws as any).id;
         this.depthSnapshotSubscriptions.set(connectionId, { ws });
         this.sendDepthSnapshot(ws);
+      } else if (data.type === 'subscribeOrderbookClients') {
+        // Upstream collector (tr-v3-orderbook-client) registering to push order books.
+        const connectionId = (ws as any).id;
+        this.orderbookClientSubscriptions.add(connectionId);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ subscription: true }));
+        }
+        this.logger.log(`orderbook client subscribed: ${connectionId}`);
+      } else if (data.type === 'orderbook' && data.data) {
+        this.handleIncomingOrderbook(ws, data.data);
       }
     } catch (error) {
       this.logger.error('Failed to parse WebSocket message.', error as Error);
     }
+  }
+
+  /** Store a raw L2 book pushed by an upstream collector client. */
+  private handleIncomingOrderbook(ws: WebSocket, raw: any): void {
+    const connectionId = (ws as any).id as string;
+    if (!this.orderbookClientSubscriptions.has(connectionId)) {
+      this.logger.warn('Ignored orderbook: socket did not send subscribeOrderbookClients');
+      return;
+    }
+    const pairId = Number(raw.pairId);
+    if (!Number.isFinite(pairId)) {
+      return;
+    }
+    const ts =
+      typeof raw.ts === 'string' ? parseInt(raw.ts, 10) : Number(raw.ts);
+    this.depthStorage.setDepth(
+      pairId,
+      raw.bids || [],
+      raw.asks || [],
+      Number.isFinite(ts) ? ts : Date.now(),
+    );
   }
 
   // private broadcastBidask(payload: BidaskStreamPayload) {
