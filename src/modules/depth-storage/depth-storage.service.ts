@@ -21,12 +21,16 @@ export class DepthStorageService {
   private readonly TOP_N = 60;
 
   setDepth(pairId: number, bids: Level[], asks: Level[], ts: number): void {
-    this.store.set(pairId, {
-      pairId,
-      ts,
-      bids: this.normalize(bids),
-      asks: this.normalize(asks),
-    });
+    const nb = this.normalize(bids);
+    const na = this.normalize(asks);
+    // Reject a crossed/corrupt book (best bid >= best ask) — real books never cross. Keep the last
+    // good one instead of storing garbage (which would produce false arbitrage spreads).
+    const bestBid = nb[0]?.[0];
+    const bestAsk = na[0]?.[0];
+    if (bestBid != null && bestAsk != null && bestBid >= bestAsk) {
+      return;
+    }
+    this.store.set(pairId, { pairId, ts, bids: nb, asks: na });
   }
 
   getBook(pairId: number): RawBook | null {

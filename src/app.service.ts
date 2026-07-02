@@ -134,9 +134,8 @@ export class AppService {
       enableRateLimit: true,
       options: {
         defaultType: 'linear', // Устанавливаем тип рынка на фьючерсный
-        // Skip local order-book checksum (okx & co. throw on drift). We only need top-N depth
-        // refreshed every 5s, so an occasional out-of-sync tick is fine and avoids reconnect churn.
-        watchOrderBook: { checksum: false },
+        // checksum ON (ccxt default): validates the local book and resyncs on drift. Disabling it
+        // silently corrupts the incremental book into a crossed book (bestBid >= bestAsk).
       },
     });
 
@@ -252,10 +251,14 @@ export class AppService {
         }
         // Rate-limit / flood → back off longer and stay quiet (transient, self-resolving).
         const rateLimited = RATE_LIMIT_RE.test(error.message || '');
-        console.error('Orderbook WebSocket connection error:', error.message);
+        // Checksum mismatch → ccxt resyncs the book on the next watch; retry quietly, no bot spam.
+        const checksum = /checksum/i.test(error.message || '');
         if (rateLimited) {
           await new Promise((resolve) => setTimeout(resolve, 5000));
+        } else if (checksum) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         } else {
+          console.error('Orderbook WebSocket connection error:', error.message);
           console.log('Reconnecting in 1 second...');
           await sentToBot(
             `orderbook microservice: ${pair.symbol} - ${error.message}`,
