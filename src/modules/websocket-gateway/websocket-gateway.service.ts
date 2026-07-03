@@ -162,7 +162,8 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ subscription: true }));
         }
-        this.logger.log(`orderbook client subscribed: ${connectionId}`);
+        const addr = (ws as any)?._socket?.remoteAddress;
+        this.logger.log(`orderbook client subscribed: ${connectionId} from ${addr}`);
       } else if (data.type === 'orderbook' && data.data) {
         this.handleIncomingOrderbook(ws, data.data);
       }
@@ -184,6 +185,16 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
     }
     const ts =
       typeof raw.ts === 'string' ? parseInt(raw.ts, 10) : Number(raw.ts);
+    // Diagnostic: log the first push per connection so we can see WHO pushes WHAT precision.
+    const connKey = `dbg:${connectionId}`;
+    if (!this.orderbookClientSubscriptions.has(connKey)) {
+      this.orderbookClientSubscriptions.add(connKey);
+      const bb = (raw.bids && raw.bids[0]) || null;
+      const ba = (raw.asks && raw.asks[0]) || null;
+      this.logger.log(
+        `[push] conn ${connectionId} pairId ${pairId} bestBid ${JSON.stringify(bb)} bestAsk ${JSON.stringify(ba)}`,
+      );
+    }
     this.depthStorage.setDepth(
       pairId,
       raw.bids || [],
