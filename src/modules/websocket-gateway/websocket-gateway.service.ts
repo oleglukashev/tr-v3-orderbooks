@@ -22,6 +22,9 @@ type WsDepthSubscription = { ws: WebSocket };
 
 // How often the full executable-liquidity snapshot is pushed to subscribers.
 const DEPTH_SNAPSHOT_INTERVAL_MS = 2000;
+// Coalescing window for the per-pair delta stream (subscribeDepthDeltas): changed books are
+// buffered and flushed at most this often, so consumers get fresh data without a message per update.
+const DEPTH_DELTA_FLUSH_MS = 250;
 
 @Injectable()
 export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
@@ -43,9 +46,17 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
     string,
     WsDepthSubscription
   >();
+  // Clients (arbitrage bot) that want per-pair deltas coalesced over a short window.
+  private readonly depthDeltaSubscriptions = new Map<
+    string,
+    WsDepthSubscription
+  >();
+  // pairIds whose book changed since the last delta flush.
+  private readonly pendingDeltaPairIds = new Set<number>();
   // Upstream pushers (tr-v3-orderbook-client) allowed to send { type: 'orderbook', data }.
   private readonly orderbookClientSubscriptions = new Set<string>();
   private depthSnapshotTimer?: ReturnType<typeof setInterval>;
+  private depthDeltaTimer?: ReturnType<typeof setInterval>;
   private wss?: WebSocketServer;
   private unsubscribeOrderbooks?: () => void;
 
@@ -72,6 +83,11 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
       DEPTH_SNAPSHOT_INTERVAL_MS,
     );
 
+    this.depthDeltaTimer = setInterval(
+      () => this.flushDepthDeltas(),
+      DEPTH_DELTA_FLUSH_MS,
+    );
+
     this.logger.log(`WebSocket server listening on ws://localhost:${port}`);
   }
 
@@ -79,6 +95,9 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
     this.unsubscribeOrderbooks?.();
     if (this.depthSnapshotTimer) {
       clearInterval(this.depthSnapshotTimer);
+    }
+    if (this.depthDeltaTimer) {
+      clearInterval(this.depthDeltaTimer);
     }
     this.wss?.close();
   }
@@ -101,6 +120,9 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
       } catch (e) {}
       try {
         this.depthSnapshotSubscriptions.delete(connectionId);
+      } catch (e) {}
+      try {
+        this.depthDeltaSubscriptions.delete(connectionId);
       } catch (e) {}
       try {
         this.orderbookClientSubscriptions.delete(connectionId);
@@ -155,6 +177,12 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
         const connectionId = (ws as any).id;
         this.depthSnapshotSubscriptions.set(connectionId, { ws });
         this.sendDepthSnapshot(ws);
+      } else if (data.type === 'subscribeDepthDeltas') {
+        // Per-pair deltas coalesced over DEPTH_DELTA_FLUSH_MS. Send a full snapshot once as a
+        // baseline, then only changed books are pushed.
+        const connectionId = (ws as any).id;
+        this.depthDeltaSubscriptions.set(connectionId, { ws });
+        this.sendDepthSnapshot(ws);
       } else if (data.type === 'subscribeOrderbookClients') {
         // Upstream collector (tr-v3-orderbook-client) registering to push order books.
         const connectionId = (ws as any).id;
@@ -201,6 +229,11 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
       raw.asks || [],
       Number.isFinite(ts) ? ts : Date.now(),
     );
+
+    // Buffer this pair for the next coalesced delta flush (only if anyone is listening).
+    if (this.depthDeltaSubscriptions.size > 0) {
+      this.pendingDeltaPairIds.add(pairId);
+    }
   }
 
   // private broadcastBidask(payload: BidaskStreamPayload) {
@@ -275,6 +308,38 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
       data: this.depthStorage.getBooks(),
     });
     for (const { ws } of this.depthSnapshotSubscriptions.values()) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(message);
+      }
+    }
+  }
+
+  /**
+   * Flush the books that changed since the last tick to delta subscribers as one coalesced message
+   * ({ [pairId]: { bids, asks } }). Nothing is sent when there are no subscribers or no changes.
+   */
+  private flushDepthDeltas(): void {
+    if (this.depthDeltaSubscriptions.size === 0 || this.pendingDeltaPairIds.size === 0) {
+      this.pendingDeltaPairIds.clear();
+      return;
+    }
+    const data: Record<number, any> = {};
+    for (const pairId of this.pendingDeltaPairIds) {
+      const book = this.depthStorage.getBook(pairId);
+      if (book) {
+        data[pairId] = book;
+      }
+    }
+    this.pendingDeltaPairIds.clear();
+    if (Object.keys(data).length === 0) {
+      return;
+    }
+    const message = JSON.stringify({
+      type: 'depthDelta',
+      updatedAt: Date.now(),
+      data,
+    });
+    for (const { ws } of this.depthDeltaSubscriptions.values()) {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(message);
       }
