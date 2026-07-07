@@ -21,7 +21,7 @@ type WsOrderbookSubscription = {
 type WsDepthSubscription = { ws: WebSocket };
 
 // How often the full executable-liquidity snapshot is pushed to subscribers.
-const DEPTH_SNAPSHOT_INTERVAL_MS = 3000;
+const DEPTH_SNAPSHOT_INTERVAL_MS = 2000;
 
 @Injectable()
 export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
