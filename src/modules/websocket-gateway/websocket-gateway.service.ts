@@ -20,6 +20,8 @@ type WsOrderbookSubscription = {
 
 type WsDepthSubscription = { ws: WebSocket };
 
+type WsDepthPairSubscription = { ws: WebSocket; pairId: number };
+
 // How often the full executable-liquidity snapshot is pushed to subscribers.
 const DEPTH_SNAPSHOT_INTERVAL_MS = 2000;
 // Coalescing window for the per-pair delta stream (subscribeDepthDeltas): changed books are
@@ -50,6 +52,12 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
   private readonly depthDeltaSubscriptions = new Map<
     string,
     WsDepthSubscription
+  >();
+  // Clients (xv-range graph) that want ONE pair's raw book only, delivered in the same
+  // `depthSnapshot` shape ({ [pairId]: book }) so they don't receive every pair.
+  private readonly depthPairSubscriptions = new Map<
+    string,
+    WsDepthPairSubscription
   >();
   // pairIds whose book changed since the last delta flush.
   private readonly pendingDeltaPairIds = new Set<number>();
@@ -125,6 +133,9 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
         this.depthDeltaSubscriptions.delete(connectionId);
       } catch (e) {}
       try {
+        this.depthPairSubscriptions.delete(connectionId);
+      } catch (e) {}
+      try {
         this.orderbookClientSubscriptions.delete(connectionId);
       } catch (e) {}
       this.logger.log(`Client disconnected: ${connectionId}`);
@@ -183,6 +194,13 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
         const connectionId = (ws as any).id;
         this.depthDeltaSubscriptions.set(connectionId, { ws });
         this.sendDepthSnapshot(ws);
+      } else if (data.type === 'subscribeDepthByPairId' && data.pairId) {
+        // One pair's raw book only. Send it immediately, then every snapshot tick.
+        const connectionId = (ws as any).id;
+        const pairId = Number(data.pairId);
+        this.depthPairSubscriptions.set(connectionId, { ws, pairId });
+        this.sendDepthForPair(ws, pairId);
+        this.logger.log(`Client subscribed to depth for pair ${pairId}`);
       } else if (data.type === 'subscribeOrderbookClients') {
         // Upstream collector (tr-v3-orderbook-client) registering to push order books.
         const connectionId = (ws as any).id;
@@ -297,20 +315,39 @@ export class WebsocketGatewayService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  /** Broadcast the full liquidity snapshot to every subscriber. */
-  private broadcastDepthSnapshot(): void {
-    if (this.depthSnapshotSubscriptions.size === 0) {
+  /** Send ONE pair's raw book to a client, in the full-snapshot shape ({ [pairId]: book }). */
+  private sendDepthForPair(ws: WebSocket, pairId: number): void {
+    if (ws.readyState !== WebSocket.OPEN || !Number.isFinite(pairId)) {
       return;
     }
-    const message = JSON.stringify({
-      type: 'depthSnapshot',
-      updatedAt: Date.now(),
-      data: this.depthStorage.getBooks(),
-    });
-    for (const { ws } of this.depthSnapshotSubscriptions.values()) {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(message);
+    const book = this.depthStorage.getBook(pairId);
+    ws.send(
+      JSON.stringify({
+        type: 'depthSnapshot',
+        updatedAt: Date.now(),
+        data: book ? { [pairId]: book } : {},
+      }),
+    );
+  }
+
+  /** Broadcast the full liquidity snapshot to full-snapshot subscribers, and each pair-scoped
+   *  subscriber only its own pair — both on the same tick. */
+  private broadcastDepthSnapshot(): void {
+    if (this.depthSnapshotSubscriptions.size > 0) {
+      const message = JSON.stringify({
+        type: 'depthSnapshot',
+        updatedAt: Date.now(),
+        data: this.depthStorage.getBooks(),
+      });
+      for (const { ws } of this.depthSnapshotSubscriptions.values()) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(message);
+        }
       }
+    }
+
+    for (const { ws, pairId } of this.depthPairSubscriptions.values()) {
+      this.sendDepthForPair(ws, pairId);
     }
   }
 
