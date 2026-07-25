@@ -17,8 +17,9 @@ interface RawBook {
 @Injectable()
 export class DepthStorageService {
   private readonly store = new Map<number, RawBook>();
-  // How deep we keep / expose. Enough for realistic entry sizes while bounding the WS payload.
-  private readonly TOP_N = 60;
+  // How deep we keep / expose. 200 feeds the order-book panel (bybit forwards a 200-deep book);
+  // still bounds the WS payload for exchanges that stream a fuller book.
+  private readonly TOP_N = 200;
 
   setDepth(pairId: number, bids: Level[], asks: Level[], ts: number): void {
     const nb = this.normalize(bids);
